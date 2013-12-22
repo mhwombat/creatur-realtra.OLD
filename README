@@ -1,0 +1,138 @@
+;; This buffer is for notes you don't want to save, and for Lisp evaluation.
+;; If you want to create a file, visit that file with C-x C-f,
+;; then enter the text in that file's own buffer.
+
+
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+PROBLEM SOLVED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111
+
+:l ALife.Realta.Agent
+:m + ALife.Realta.Pretty
+:m + ALife.Realta.Action
+:m + ALife.Realta.Config
+:m + ALife.Realta.Brain
+:m + ALife.Realta.Decider
+:m + ALife.Realta.Response
+:m + ALife.Realta.Image
+:m + ALife.Realta.SOM
+:m + ALife.Realta.Statistics
+:m + ALife.Realta.Util
+:m + ALife.Realta.Condition
+:m + ALife.Realta.Classifier
+
+:m + Control.Monad.State
+:m + ALife.Creatur.Universe
+:m + ALife.Creatur.Genetics.BRGCWord8
+
+a <- evalStateT (getAgent "Founder1") universe :: IO (Either String Realta)
+λ> a
+Right (Realta {rName = "Founder1", rAppearance = <3x1 pixels>, rBrain = Brain {bClassifier = (\d -> d { sSOM=setCounter 0 (sSOM d) }) (buildGeneticSOM (Params {pSize = 1, pR0 = 0.642896591925236, pRf = 0.1552337762473688, pW0 = 0.4850097734097303, pWf = 0.3820925136388868, pTf = 7238}) [<3x1 pixels>]), bDecider = (\d -> d { sSOM=setCounter 0 (sSOM d) }) (buildGeneticSOM (Params {pSize = 1, pR0 = 0.37598131478902796, pRf = 0.20308605023297246, pW0 = 0.5298357061435449, pWf = 0.22706748414102929, pTf = 8172}) [Response {rDirectObject = [0.7241239999925906], rIndirectObject = [0.26413769311388935], rCondition = Condition {cEnergy = 0.2473006832159369, cPassion = 0.7432848268038815, cBoredom = 0.657025165239601}, rAction = Mate, rResult = Just 8.87477286714019e-2}]), bLastResponse = Response {rDirectObject = [6.841572632022463e-2], rIndirectObject = [0.12788281318505612], rCondition = Condition {cEnergy = 0.7611671583435632, cPassion = 5.3545097957730436e-2, cBoredom = 0.5468623573566085}, rAction = Ignore, rResult = Just 0.4427547376992478}}, rSex = Female, rCondition = Condition {cEnergy = 1.0, cPassion = 0.0, cBoredom = 0.0}, rGenome = ([2,1,255,0,0,255,0,255,0,255,0,0,255,255,1,2,1,155,172,20,0,1,246,60,0,0,27,1,1,229,0,1,98,0,32,225,252,1,0,1,28,0,1,80,46,1,0,31,1],[2,1,255,0,0,255,0,255,0,255,0,0,255,255,1,2,1,155,172,20,0,1,246,60,0,0,27,1,1,229,0,1,98,0,32,225,252,1,0,1,28,0,1,80,46,1,0,31,1])})
+
+let (Right mom) = a
+kid <- evalRandIO (makeOffspring mom mom "wombat")
+
+
+λ> kid
+Left ["Sequence 1:","Decider:","SOM has no initial models","Sequence 2:","Decider:","SOM has no initial models"]
+
+λ> analyseWriter . ALife.Creatur.Genetics.BRGCWord8.put $ mom
+[([],"U1"),([],"M1"),([1],"R1"),([],"M1"),([31],"21"),([0],"0"),([1],"1"),([46],"52"),([80],"96"),([1],"1"),([],"U1"),([],"M1"),([0],"L1"),([],"M1"),([],"K1"),([],"M1"),([],":*:"),([28],"23"),([],"K1"),([],"M1"),([],"M1"),([1],"R1"),([],"M1"),([],"U1"),([],"M1"),([0],"L1"),([1],"R1"),([],"M1"),([252],"168"),([225],"190"),([32],"63"),([],"U1"),([],"M1"),([0],"L1"),([],"M1"),([],"K1"),([],"M1"),([],":*:"),([98],"67"),([],"K1"),([],"M1"),([],"M1"),([1],"R1"),([],"M1"),([],"U1"),([],"M1"),([0],"L1"),([],"M1"),([],"K1"),([],"M1"),([],":*:"),([229],"185"),([],"K1"),([],"M1"),([],"M1"),([1],"R1"),([],"M1"),([],"K1"),([],"M1"),([],"M1"),([1],"R1"),([],"M1"),([27],"18"),([0],"0"),([0],"0"),([60],"40"),([246],"164"),([1],"1"),([],"U1"),([],"M1"),([0],"L1"),([],"M1"),([],"K1"),([],"M1"),([],":*:"),([1],"1"),([2],"3"),([],"K1"),([],"M1"),([],"M1"),([1],"R1"),([],"M1"),([1],"1"),([2],"3")]
+
+NEED TO ADD IN THE ADDWRITERANALYSISM BIT FOR THE IMAGE!!!λ> let (g1,g2) = rGenome mom
+
+λ> analyseReader (ALife.Creatur.Genetics.BRGCWord8.get :: Reader (Either [String] Realta)) g1
+[([],"U1"),([],"M1"),([98],"L1"),([],"M1"),([1],"1"),([0],"0"),([229],"185"),([1],"1"),([1],"1"),([27],"18"),([],"U1"),([],"M1"),([0],"L1"),([],"M1"),([],"K1"),([],"M1"),([],":*:"),([],"U1"),([],"M1"),([0],"L1"),([],"M1"),([],"U1"),([],"M1"),([60],"L1"),([246],"L1"),([],"M1"),([1],"1"),([0],"0"),([20],"24"),([],"U1"),([],"M1"),([172],"L1"),([],"M1"),([],"K1"),([],"M1"),([],":*:"),([155],"237"),([],"K1"),([],"M1"),([],"M1"),([1],"R1"),([],"M1"),([],"U1"),([],"M1"),([2],"L1"),([],"M1"),([],"K1"),([],"M1"),([],":*:"),([1],"1"),([],"K1"),([],"M1"),([],"M1"),([255],"R1"),([],"M1"),([],"K1"),([],"M1"),([],"M1"),([255],"R1"),([],"M1"),([],"U1"),([],"M1"),([0],"L1"),([],"M1"),([255,0,0,255,0,255,0,255,0],"Image {iWidth = 3, iHeight = 1, pixels = [255,0,0,255,0,255,0,255,0]}"),([1],"1"),([2],"3")]
+
+λ> let xs = runWriter . ALife.Creatur.Genetics.BRGCWord8.put $ mom
+λ> xs
+[2,1,255,0,0,255,0,255,0,255,0,0,255,255,1,2,1,155,172,20,0,1,246,60,0,0,27,1,1,229,0,1,98,0,32,225,252,1,0,1,28,0,1,80,46,1,0,31,1]
+
+Appearance - OK:
+[2,1,255,0,0,255,0,255,0,255,0,0,255,255,
+λ> runReader (ALife.Creatur.Genetics.BRGCWord8.get :: Reader (Either [String] Image)) [2,1,255,0,0,255,0,255,0,255,0,0,255,255]
+Right (Image {iWidth = 3, iHeight = 1, pixels = [255,0,0]})
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+NO!!!!!!!!! WE DIDN'T READ ALL OF THE PIXELS!!!!! WHY DIDN'T MY QC TESTS CATCH THIS???
+Image {iWidth = 3, iHeight = 1, pixels = [255,0,0,255,0,255,0,255,0,0,255,255]}
+
+Brain - Classifier - OK:
+1,2,1,155,172,20,0,1,246,60,0,0,27,
+
+Brain - Decider - OK:
+1,1,229,0,1,98,0,32,225,252,1,0,1,28,0,1,80,46,1,0,31,
+
+Sex - OK:
+1]
+
+
+    app <- get
+    brain <- get
+      classifier
+      decider
+    sex <- get
+
