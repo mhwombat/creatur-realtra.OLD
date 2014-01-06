@@ -14,7 +14,7 @@ cabal-version:       >=1.8
 
 executable realtra-daemon
   main-is:          ALife/Realtra/Daemon.hs
-  ghc-options:      -Wall -Werror -rtsopts
+  ghc-options:      -Wall -Werror -rtsopts -threaded
   -- other-modules:
   build-depends:    array ==0.4.*,
                     base ==4.*,
@@ -40,7 +40,7 @@ executable realtra-daemon
 
 executable realtra-init
   main-is:          ALife/Realtra/GeneratePopulation.hs
-  ghc-options:      -Wall -Werror -rtsopts 
+  ghc-options:      -Wall -Werror -rtsopts -threaded
   -- other-modules:
   build-depends:    array ==0.4.*,
                     base ==4.*,

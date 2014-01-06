@@ -30,10 +30,10 @@ imageDB :: ImageDB
 imageDB = mkImageDB "/home/amy/nosync/GalaxyZoo/table2/cropped-bw-images/"
 
 imageHeight :: Int
-imageHeight = 3 --143
+imageHeight = 143
   
 imageWidth :: Int
-imageWidth = 3 --143
+imageWidth = 143
 
 -- | The classifier portion of a wain's brain is a Self-Organising Map
 --   (SOM). This SOM uses a hexagonal grid with hexagonal tiles. The
