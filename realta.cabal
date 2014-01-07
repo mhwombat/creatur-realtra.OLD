@@ -1,5 +1,5 @@
-name:                realtra
-version:             0.1.0.0
+name:                creatur-realtra
+version:             0.1.1
 synopsis:            Agent for categorising images.
 description:         Experiment in analysing Galaxy Zoo data.
 homepage:            https://github.com/mhwombat/realtra
@@ -40,7 +40,7 @@ executable realtra-daemon
 
 executable realtra-init
   main-is:          ALife/Realtra/GeneratePopulation.hs
-  ghc-options:      -Wall -Werror -rtsopts -threaded
+  ghc-options:      -Wall -Werror -O2 -rtsopts -threaded -prof -auto-all -caf-all
   -- other-modules:
   build-depends:    array ==0.4.*,
                     base ==4.*,
