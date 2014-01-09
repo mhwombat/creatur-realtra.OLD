@@ -41,7 +41,7 @@ imageWidth = 143
 --   The processing time required is proportional to the square of this
 --   value.
 maxClassifierSize :: Word8
-maxClassifierSize = 5
+maxClassifierSize = 3
 
 -- | The decider portion of a wain's brain is also a SOM, using a
 --   hexagonal grid with hexagonal tiles. The setting below controls the
@@ -54,7 +54,7 @@ maxAgeOfMaturity :: Word16
 maxAgeOfMaturity = 200
 
 initialPopulationSize :: Int
-initialPopulationSize = 10
+initialPopulationSize = 100
 
 --
 -- Rewards and penalties
