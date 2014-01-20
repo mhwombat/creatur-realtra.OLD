@@ -130,27 +130,29 @@ runAction :: Action -> Astronomer -> Object -> Object -> Label
 --
 -- Co-operate
 --
-runAction Cooperate me (IObject img imgId) (AObject other) myLabel = do
+runAction Cooperate me dObj (AObject other) myLabel = do
+  let dObjId = objectId dObj
+  let dObjApp = objectAppearance dObj
   writeToLog $ agentId me ++ " tells " ++ agentId other
-    ++ " that image " ++ imgId ++ " has label "
+    ++ " that image " ++ dObjId ++ " has label "
     ++ show myLabel
-  let (otherLabel, other') = classify img other
+  let (otherLabel, other') = classify dObjApp other
   if myLabel == otherLabel
     then do
        writeToLog $ agentId other ++ " agrees with " ++  agentId me
-         ++ " that " ++ imgId ++ " has label "
+         ++ " that " ++ dObjId ++ " has label "
          ++ show myLabel
        return [adjustEnergy (Config.cooperationEnergyDelta
                  + Config.cooperationAgreementDelta) me, other']
     else do
        writeToLog $ agentId other ++ " disagrees with " ++  agentId me
-         ++ ", says that " ++ imgId ++ " has label "
+         ++ ", says that " ++ dObjId ++ " has label "
          ++ show otherLabel
        writeToLog $ agentId me ++ " is learning"
        writeToLog $ agentId other' ++ " is learning"
-       me' <- teachLabel img otherLabel
+       me' <- teachLabel dObjApp otherLabel
                . adjustEnergy Config.cooperationEnergyDelta $ me
-       other'' <- teachLabel img myLabel other'
+       other'' <- teachLabel dObjApp myLabel other'
        return [me', other'']
 runAction Cooperate me _ _ _ = do
   writeToLog $ agentId me ++ " tries to co-operate with an image"

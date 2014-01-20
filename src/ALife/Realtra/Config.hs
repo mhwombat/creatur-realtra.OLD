@@ -31,15 +31,16 @@ imageWidth = 21
 
 -- | The classifier portion of a wain's brain is a Self-Organising Map
 --   (SOM). This SOM uses a hexagonal grid with hexagonal tiles. The
---   setting below controls the maximum length of one side of the grid.
---   The processing time required is proportional to the square of this
---   value.
+--   setting below controls the maximum length of one side of the grid,
+--   for the /initial/ population. The processing time required is
+--   proportional to the square of this value.
 maxClassifierSize :: Word8
 maxClassifierSize = 3
 
 -- | The decider portion of a wain's brain is also a SOM, using a
 --   hexagonal grid with hexagonal tiles. The setting below controls the
---   maximum length of one side of the grid. The processing time
+--   maximum length of one side of the grid,
+--   for the /initial/ population. The processing time
 --   required is proportional to the square of this value.
 maxDeciderSize :: Word8
 maxDeciderSize = 5
