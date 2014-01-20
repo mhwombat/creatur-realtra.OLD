@@ -28,7 +28,6 @@ import ALife.Creatur.Genetics.BRGCWord8 (Genetic, put, get,
 import ALife.Creatur.Genetics.Diploid (Diploid, express)
 import ALife.Creatur.Wain.Pretty (Pretty, pretty)
 import ALife.Creatur.Wain.Util (forceIntToWord8, word8ToInt)
-import ALife.Creatur.Wain.UnitInterval (UIDouble)
 import Control.Applicative ((<$>), (<*>), pure)
 import Control.Monad.Random (Rand, RandomGen, getRandoms)
 import Data.Array.Repa (extent, toList)
@@ -90,7 +89,7 @@ instance Pretty Image where
     where f x = ' ' : pretty x
 
 instance Pattern Image where
-  type Metric Image = UIDouble
+  type Metric Image = Double
   difference a b = avgDelta / 255
     where xs = take l $ pixels a ++ repeat 0
           ys = take l $ pixels b ++ repeat 0
@@ -154,22 +153,22 @@ arrayToImage (I.Grey arr) = Image w h $ toList arr
   where (w:h:_) = listOfShape . extent $ arr
 arrayToImage _ = error "Unsupported image type"
 
-adjust :: [Word8] -> UIDouble -> [Word8] -> [Word8]
+adjust :: [Word8] -> Double -> [Word8] -> [Word8]
 adjust ts r xs
   | r < 0     = error "Negative learning rate"
   | r > 1     = error "Learning rate > 1"
   | otherwise = zipWithCopyRight (adjust' r) ts xs
 
-adjust' :: UIDouble -> Word8 -> Word8 -> Word8
+adjust' :: Double -> Word8 -> Word8 -> Word8
 adjust' r t x = round(x' + r*(t' - x'))
-  where t' = fromIntegral t :: UIDouble
-        x' = fromIntegral x :: UIDouble
+  where t' = fromIntegral t :: Double
+        x' = fromIntegral x :: Double
 
 -- Zip until we run out of elements on the left, then copy elements from
 -- the right
 zipWithCopyRight :: (a -> a -> a) -> [a] -> [a] -> [a]
 zipWithCopyRight f (x:xs) (y:ys)
-  = (f x y) : zipWithCopyRight f xs ys
+  = f x y : zipWithCopyRight f xs ys
 zipWithCopyRight _ _ [] = []
 zipWithCopyRight _ [] ys = ys
 

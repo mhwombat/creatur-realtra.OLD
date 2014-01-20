@@ -64,6 +64,6 @@ anyImage = do
   initIfNeeded
   db <- get
   k <- liftIO $ randomRIO (0,numImages db - 1)
-  let filename = (images db !! k)
+  let filename = images db !! k
   img <- liftIO . readImage $ mainDir db ++ '/':filename
   return (img, filename)

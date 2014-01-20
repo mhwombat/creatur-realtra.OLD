@@ -15,17 +15,20 @@ module ALife.Realtra.Wain
   (
     Astronomer,
     run,
-    randomAstronomer
+    randomAstronomer,
+    summarise
   ) where
 
 import ALife.Creatur (Agent, agentId)
 import ALife.Creatur.Logger (writeToLog)
 import ALife.Creatur.Universe (SimpleUniverse)
-import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, tryMating,
-  numberOfClassifierModels, numberOfDeciderModels, chooseAction,
-  randomWain, classify, teachLabel, hasChild, weanChildIfReady)
-import ALife.Creatur.Wain.Statistics (Statistical, stats) --, iStat)
-import ALife.Creatur.Wain.UnitInterval (UIDouble)
+import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
+  tryMating, numberOfClassifierModels, numberOfDeciderModels,
+  conflation, chooseAction, randomWain, classify, teachLabel, hasChild,
+  weanChildIfReady, incAge)
+import ALife.Creatur.Wain.Pretty (pretty)
+import ALife.Creatur.Wain.Statistics (Statistical, Statistic, stats,
+  maxStats, minStats, avgStats, dStat)
 import ALife.Realtra.Action (Action(..))
 import qualified ALife.Realtra.Config as Config
 import ALife.Realtra.Image (Image, stripedImage, randomImage)
@@ -43,35 +46,61 @@ randomAstronomer wainName = do
   let n = fromIntegral $ 3*Config.maxDeciderSize*Config.maxDeciderSize
   let app = stripedImage Config.imageWidth Config.imageHeight
   imgs <- replicateM n (randomImage Config.imageWidth Config.imageHeight)
-  randomWain wainName app Config.maxClassifierSize imgs Config.maxDeciderSize Config.maxAgeOfMaturity
+  randomWain wainName app Config.maxClassifierSize imgs
+    Config.maxDeciderSize Config.maxAgeOfMaturity
 
-run :: [Astronomer] -> StateT (SimpleUniverse Astronomer) IO [Astronomer]
+-- TODO Clean up this code
+run
+  :: [Astronomer]
+    -> StateT (SimpleUniverse Astronomer) IO ([Astronomer], Maybe [Statistic])
 run (me:xs) = do
   writeToLog $ "It's " ++ agentId me ++ "'s turn to shine"
   writeToLog $ "DEBUG: before " ++ show (stats me)
-  let bc = metabolismCost me
-  writeToLog $ "DEBUG: metabolism cost=" ++ show bc
-  let me' = adjustEnergy bc me
-  writeToLog $ "DEBUG: after " ++ show (stats me')
-  (x:y:_) <- liftIO . randomlyInsertImages . map AObject $ xs
-  writeToLog $ "DEBUG: direct object = " ++ objectId x
-  writeToLog $ "DEBUG: indirect object = " ++ objectId y
-  let (imgLabel, action, me3) = chooseAction (objectAppearance x) (objectAppearance y) me'
-  writeToLog $ agentId me ++ " sees " ++ objectId x ++ ", labels it " ++ show imgLabel ++ ", and choses to " ++ show action
+  let (me2, metabolismStats) = runMetabolism me
+  writeToLog $ "DEBUG: after " ++ show (stats me2)
+  (x, y) <- chooseObjects xs
+  (imgLabel, action, me3)
+    <- chooseAction (objectAppearance x) (objectAppearance y) me2
+  writeToLog $ agentId me ++ " sees " ++ objectId x ++ ", labels it "
+    ++ show imgLabel ++ ", and chooses to " ++ show action
+    ++ " with " ++ objectId y
   (me4:others) <- runAction action me3 x y imgLabel
-  me5 <- weanChildIfReady me4
-  return $ me5 ++ others
+  me5 <- incAge me4
+  us <- weanChildIfReady me5
+  let modifiedAgents = us ++ others
+  writeToLog $ "End of " ++ agentId me ++ "'s turn"
+  writeToLog $ "Modified agents: " ++ show (map agentId modifiedAgents)
+  return (modifiedAgents, Just (stats me ++ metabolismStats))
 run _ = error "no more wains"
 
-metabolismCost :: Astronomer -> UIDouble
-metabolismCost me = classifierCost + deciderCost + childCost
-  where classifierCost = Config.energyDeltaPerClassifierModel
+runMetabolism :: Astronomer -> (Astronomer, [Statistic])
+runMetabolism me = (me', metabolismStats)
+  where classifierDelta = Config.energyDeltaPerClassifierModel
                           * fromIntegral (numberOfClassifierModels me)
-        deciderCost = Config.energyDeltaPerDeciderModel
+        classifierStat = dStat "classifier Δe" classifierDelta
+        deciderDelta = Config.energyDeltaPerDeciderModel
                           * fromIntegral (numberOfDeciderModels me)
-        childCost = if hasChild me
+        deciderStat = dStat "decider Δe" deciderDelta
+        conflationDelta = Config.conflationEnergyDeltaFactor
+                            * (conflation me)
+        conflationStat = dStat "conflation Δe" conflationDelta
+        childDelta = if hasChild me
                       then Config.childRearingEnergyDelta
                       else 0
+        childStat = dStat "child rearing Δe" childDelta
+        passionStat = dStat "passion Δp" Config.passionDelta
+        metabolismDelta = classifierDelta + deciderDelta
+                            + conflationDelta + childDelta
+        metabolismStats = [classifierStat, deciderStat, conflationStat,
+          childStat, passionStat]
+        me' = adjustPassion Config.passionDelta . adjustEnergy metabolismDelta $ me
+
+chooseObjects :: [Astronomer] -> StateT (SimpleUniverse Astronomer) IO (Object, Object)
+chooseObjects xs = do
+  -- writeToLog $ "Direct object = " ++ objectId x
+  -- writeToLog $ "Indirect object = " ++ objectId y
+  (x:y:_) <- liftIO . randomlyInsertImages . map AObject $ xs
+  return (x, y)
 
 data Object = IObject Image String | AObject Astronomer
 
@@ -91,7 +120,7 @@ randomlyInsertImages xs = do
       (img, imageId) <- evalStateT anyImage Config.imageDB
       n <- randomRIO (0, 1)
       let (fore, aft) = splitAt n xs
-      randomlyInsertImages $ fore ++ (IObject img imageId) : aft
+      randomlyInsertImages $ fore ++ IObject img imageId : aft
     else
       return xs
 
@@ -119,13 +148,14 @@ runAction Cooperate me (IObject img imgId) (AObject other) myLabel = do
          ++ show otherLabel
        writeToLog $ agentId me ++ " is learning"
        writeToLog $ agentId other' ++ " is learning"
-       return [teachLabel img otherLabel
-               . adjustEnergy Config.cooperationEnergyDelta $ me,
-               teachLabel img myLabel other']
+       me' <- teachLabel img otherLabel
+               . adjustEnergy Config.cooperationEnergyDelta $ me
+       other'' <- teachLabel img myLabel other'
+       return [me', other'']
 runAction Cooperate me _ _ _ = do
   writeToLog $ agentId me ++ " tries to co-operate with an image"
   return [adjustEnergy Config.cooperationEnergyDelta me]
-
+  
 --
 -- Mate
 --
@@ -142,7 +172,13 @@ runAction Mate me (IObject _ imgId) _ _ = do
 --
 runAction Ignore me (AObject other) _ _ = do
   writeToLog $ agentId me ++ " ignores " ++ agentId other
-  return []
+  return [me]
 runAction Ignore me (IObject _ imgId) _ _ = do
   writeToLog $ agentId me ++ " ignores image " ++ imgId
-  return []
+  return [me]
+
+summarise :: [[Statistic]] -> StateT (SimpleUniverse Astronomer) IO ()
+summarise xs = do
+  writeToLog $ pretty (maxStats xs)
+  writeToLog $ pretty (minStats xs)
+  writeToLog $ pretty (avgStats xs)

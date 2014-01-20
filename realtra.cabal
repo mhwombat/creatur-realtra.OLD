@@ -1,5 +1,5 @@
 name:                creatur-realtra
-version:             0.1.2
+version:             0.1.5
 synopsis:            Agent for categorising images.
 description:         Experiment in analysing Galaxy Zoo data.
 homepage:            https://github.com/mhwombat/realtra
@@ -19,19 +19,18 @@ executable realtra-daemon
   build-depends:
                     array ==0.4.* || ==0.5.*,
                     base ==4.*,
-                    cereal ==0.3.* || == 0.4.*,
-                    creatur ==4.1.*,
-                    creatur-wains ==3.1.*,
+                    cereal ==0.3.* || ==0.4.*,
+                    creatur ==4.3.*,
+                    creatur-wains ==3.2.*,
                     directory ==1.2.*,
                     hdaemonize ==0.4.*,
---                    list-grouping ==0.1.*,
                     MonadRandom ==0.1.*,
                     mtl ==2.1.*,
                     old-locale ==1.0.*,
                     random ==1.0.*,
                     repa ==3.2.*,
                     repa-devil ==0.3.*,
-                    som ==6.*,
+                    som ==7.*,
                     split ==0.2.*,
                     time ==1.4.*,
                     transformers ==0.3.*,
@@ -46,18 +45,17 @@ executable realtra-init
   build-depends:
                     array ==0.4.* || ==0.5.*,
                     base ==4.*,
-                    cereal ==0.3.* || == 0.4.*,
-                    creatur ==4.1.*,
-                    creatur-wains ==3.1.*,
+                    cereal ==0.3.* || ==0.4.*,
+                    creatur ==4.3.*,
+                    creatur-wains ==3.2.*,
                     directory ==1.2.*,
- --                   list-grouping ==0.1.*,
                     MonadRandom ==0.1.*,
                     mtl ==2.1.*,
                     old-locale ==1.0.*,
                     random ==1.0.*,
                     repa ==3.2.*,
                     repa-devil ==0.3.*,
-                    som ==6.*,
+                    som ==7.*,
                     split ==0.2.*,
                     time ==1.4.*,
                     transformers ==0.3.*,
@@ -72,9 +70,9 @@ executable realtra-examine
                     array ==0.4.* || ==0.5.*,
                     base ==4.*,
                     base-unicode-symbols ==0.2.*,
-                    cereal ==0.3.* || == 0.4.*,
-                    creatur ==4.1.*,
-                    creatur-wains ==3.1.*,
+                    cereal ==0.3.* || ==0.4.*,
+                    creatur ==4.3.*,
+                    creatur-wains ==3.2.*,
                     directory ==1.2.*,
                     grid ==7.* && >7.1,
                     list-grouping ==0.1.*,
@@ -84,7 +82,7 @@ executable realtra-examine
                     random ==1.0.*,
                     repa ==3.2.*,
                     repa-devil ==0.3.*,
-                    som ==6.*,
+                    som ==7.*,
                     split ==0.2.*,
                     time ==1.4.*,
                     transformers ==0.3.*,
@@ -100,9 +98,9 @@ Test-suite realtra-tests
   build-depends:
                     array ==0.4.* || ==0.5.*,
                     base ==4.*,
-                    cereal ==0.3.* || == 0.4.*,
-                    creatur ==4.1.*,
-                    creatur-wains ==3.1.*,
+                    cereal ==0.3.* || ==0.4.*,
+                    creatur ==4.3.*,
+                    creatur-wains ==3.2.*,
                     directory ==1.2.*,
                     grid ==7.* && >7.1,
                     MonadRandom ==0.1.*,
@@ -110,11 +108,11 @@ Test-suite realtra-tests
                     random ==1.0.*,
                     repa ==3.2.*,
                     repa-devil ==0.3.*,
-                    som ==6.*,
+                    som ==7.*,
                     test-framework ==0.8.*,
                     test-framework-hunit ==0.3.*,
                     test-framework-quickcheck2 ==0.3.*,
                     transformers ==0.3.*,
-                    QuickCheck ==2.5.*
+                    QuickCheck ==2.6.*
   Other-modules:    ALife.Realtra.Config
                     ALife.Realtra.ImageQC

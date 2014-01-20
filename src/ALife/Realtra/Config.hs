@@ -14,26 +14,20 @@
 module ALife.Realtra.Config where
 
 import ALife.Creatur.Universe (mkSimpleUniverse, SimpleUniverse)
-import ALife.Creatur.Wain.UnitInterval (UIDouble(..))
 import ALife.Realtra.ImageDB (ImageDB, mkImageDB)
 import Data.Word (Word8, Word16)
-
---import Data.Array.Repa ((:.) (..), Z (..))
 
 universe :: SimpleUniverse a
 universe = mkSimpleUniverse "GalaxyZoo" "/home/amy/alife/gzoo1" 100000
 
--- imageSize :: ((Z :. Int) :. Int) :. Int
--- imageSize = Z :. (143 :: Int) :. (143 :: Int) :. (3 :: Int)
-
 imageDB :: ImageDB
-imageDB = mkImageDB "/home/amy/nosync/GalaxyZoo/table2/cropped-bw-images/"
+imageDB = mkImageDB "/home/amy/GalaxyZoo/table2/tiny-images"
 
 imageHeight :: Int
-imageHeight = 143
+imageHeight = 21
   
 imageWidth :: Int
-imageWidth = 143
+imageWidth = 21
 
 -- | The classifier portion of a wain's brain is a Self-Organising Map
 --   (SOM). This SOM uses a hexagonal grid with hexagonal tiles. The
@@ -50,6 +44,7 @@ maxClassifierSize = 3
 maxDeciderSize :: Word8
 maxDeciderSize = 5
 
+-- | The maximum age at which wains mature in the initial population.
 maxAgeOfMaturity :: Word16
 maxAgeOfMaturity = 200
 
@@ -66,7 +61,7 @@ initialPopulationSize = 100
 
 -- Every time an agent flirts, its energy changes by a fixed amount.
 -- This is normally an energy LOSS, so it should be negative.
-flirtingEnergyDelta :: UIDouble
+flirtingEnergyDelta :: Double
 flirtingEnergyDelta = -0.01
 
 -- Also see passionDelta
@@ -77,13 +72,13 @@ flirtingEnergyDelta = -0.01
 
 -- Every time an agent mates, its energy changes by a fixed amount.
 -- This is normally an energy LOSS, so it should be negative.
-matingEnergyDelta :: UIDouble
+matingEnergyDelta :: Double
 matingEnergyDelta = -0.01
 
 -- If an agent is raising a child, then every time the parent gets a CPU
 -- turn, its energy changes.
 -- This is normally an energy LOSS, so it should be negative.
-childRearingEnergyDelta :: UIDouble
+childRearingEnergyDelta :: Double
 childRearingEnergyDelta = -0.005
 
 
@@ -92,32 +87,15 @@ childRearingEnergyDelta = -0.005
 -- Every time an agent gets a CPU turn, its passion changes by a fixed
 -- amount.
 -- This is normally a passion GAIN, so it should be positive.
-passionDelta :: UIDouble
+passionDelta :: Double
 passionDelta = 0.1
-
--- *** Controlling the frequency of object classification
-
--- TODO WHY NOT JUST CLASSIFY ALL THE TIME? OR ONLY WHEN CONFIDENT???
--- TODO OR SAY SOMETHING ABOUT ONLY CLASSIFYING IMAGES, NOT AGENTS.
-
--- When an agent classifies an object, its energy changes by a fixed
--- amount.
--- This is normally an energy LOSS, so it should be negative.
-classificationEnergyDelta :: Double
-classificationEnergyDelta = -0.01
-
--- When an agent classifies an object, its energy changes based on how
--- many models it has.
--- This is normally an energy GAIN, so it should be positive.
-classificationEnergyDeltaPerModel :: Double
-classificationEnergyDeltaPerModel = 0.005
 
 -- *** Controlling the size of the classifier
 
 -- Every time an agent gets a CPU turn, its energy changes based on how
 -- many classifier models it has.
 -- This is normally an energy LOSS, so it should be negative.
-energyDeltaPerClassifierModel :: UIDouble
+energyDeltaPerClassifierModel :: Double
 energyDeltaPerClassifierModel = -0.001
 
 -- Every time an agent gets a CPU turn, its energy changes by an amount
@@ -126,8 +104,6 @@ energyDeltaPerClassifierModel = -0.001
 conflationEnergyDeltaFactor :: Double
 conflationEnergyDeltaFactor = 0.001
 
--- See also classificationEnergyDeltaPerModel?????
-
 -- See also cooperationAgreementDelta
 
 -- *** Controlling the size of the decider
@@ -135,7 +111,7 @@ conflationEnergyDeltaFactor = 0.001
 -- Every time an agent gets a CPU turn, its energy changes based on how
 -- many decider models it has.
 -- This is normally an energy LOSS, so it should be negative.
-energyDeltaPerDeciderModel :: UIDouble
+energyDeltaPerDeciderModel :: Double
 energyDeltaPerDeciderModel = -0.001
 
 -- *** Controlling the frequency of co-operation
@@ -143,13 +119,13 @@ energyDeltaPerDeciderModel = -0.001
 -- When an agent initiates co-operation (trading classifications), its
 -- energy changes by a fixed amount.
 -- This is normally an energy LOSS, so it should be negative.
-cooperationEnergyDelta :: UIDouble
+cooperationEnergyDelta :: Double
 cooperationEnergyDelta = -0.1
 
 -- When two agents co-operate, and agree on a classification, their
 -- energy changes by a fixed amount.
 -- This is normally an energy GAIN, so it should be positive.
-cooperationAgreementDelta :: UIDouble
+cooperationAgreementDelta :: Double
 cooperationAgreementDelta = 0.3
 
 

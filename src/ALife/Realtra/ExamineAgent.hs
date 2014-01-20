@@ -49,7 +49,7 @@ main = do
 
   args <- getArgs
   if null args
-    then do
+    then
       evalStateT (getAndExamineAll) Config.universe
     else do
       let s = head args

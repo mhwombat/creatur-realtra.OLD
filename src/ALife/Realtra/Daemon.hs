@@ -12,11 +12,11 @@
 ------------------------------------------------------------------------
 module Main where
 
-import ALife.Realtra.Wain (run)
+import ALife.Realtra.Wain (run, summarise)
 import qualified ALife.Realtra.Config as Config
 import ALife.Creatur.Daemon (Daemon(..), launch)
 import ALife.Creatur.Universe.Task (simpleDaemon, runInteractingAgents)
 
 main :: IO ()
-main = launch simpleDaemon{task=runInteractingAgents run}
+main = launch simpleDaemon{task=runInteractingAgents run summarise}
          Config.universe
