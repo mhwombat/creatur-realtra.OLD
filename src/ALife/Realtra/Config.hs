@@ -50,7 +50,7 @@ maxAgeOfMaturity :: Word16
 maxAgeOfMaturity = 200
 
 initialPopulationSize :: Int
-initialPopulationSize = 100
+initialPopulationSize = 5
 
 --
 -- Rewards and penalties

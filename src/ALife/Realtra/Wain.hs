@@ -28,7 +28,7 @@ import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
   weanChildIfReady, incAge)
 import ALife.Creatur.Wain.Pretty (pretty)
 import ALife.Creatur.Wain.Statistics (Statistical, Statistic, stats,
-  maxStats, minStats, avgStats, dStat)
+  maxStats, minStats, avgStats, sumStats, dStat, iStat)
 import ALife.Realtra.Action (Action(..))
 import qualified ALife.Realtra.Config as Config
 import ALife.Realtra.Image (Image, stripedImage, randomImage)
@@ -55,10 +55,11 @@ run
     -> StateT (SimpleUniverse Astronomer) IO ([Astronomer], Maybe [Statistic])
 run (me:xs) = do
   writeToLog $ "It's " ++ agentId me ++ "'s turn to shine"
-  writeToLog $ "DEBUG: before " ++ show (stats me)
   let (me2, metabolismStats) = runMetabolism me
-  writeToLog $ "DEBUG: after " ++ show (stats me2)
   (x, y) <- chooseObjects xs
+  writeToLog $ "DEBUG: " ++ agentId me ++ " sees " ++ objectId x
+    ++ " and " ++ objectId y
+  writeToLog $ "DEBUG: " ++ agentId me ++ " stats: " ++ pretty (stats me)
   (imgLabel, action, me3)
     <- chooseAction (objectAppearance x) (objectAppearance y) me2
   writeToLog $ agentId me ++ " sees " ++ objectId x ++ ", labels it "
@@ -69,8 +70,10 @@ run (me:xs) = do
   us <- weanChildIfReady me5
   let modifiedAgents = us ++ others
   writeToLog $ "End of " ++ agentId me ++ "'s turn"
+  let allStats = stats me ++ metabolismStats
+  writeToLog $ agentId me ++ "'s stats: " ++ pretty allStats
   writeToLog $ "Modified agents: " ++ show (map agentId modifiedAgents)
-  return (modifiedAgents, Just (stats me ++ metabolismStats))
+  return (modifiedAgents, Just allStats)
 run _ = error "no more wains"
 
 runMetabolism :: Astronomer -> (Astronomer, [Statistic])
@@ -88,12 +91,15 @@ runMetabolism me = (me', metabolismStats)
                       then Config.childRearingEnergyDelta
                       else 0
         childStat = dStat "child rearing Δe" childDelta
-        passionStat = dStat "passion Δp" Config.passionDelta
+        passionStat = dStat "Δp" Config.passionDelta
         metabolismDelta = classifierDelta + deciderDelta
                             + conflationDelta + childDelta
+        adultPopStat = iStat "adult pop." 1
+        childPopStat = iStat "child pop." $ if hasChild me then 1 else 0
         metabolismStats = [classifierStat, deciderStat, conflationStat,
-          childStat, passionStat]
-        me' = adjustPassion Config.passionDelta . adjustEnergy metabolismDelta $ me
+          childStat, passionStat, adultPopStat, childPopStat]
+        me' = adjustPassion Config.passionDelta
+                . adjustEnergy metabolismDelta $ me
 
 chooseObjects :: [Astronomer] -> StateT (SimpleUniverse Astronomer) IO (Object, Object)
 chooseObjects xs = do
@@ -172,15 +178,14 @@ runAction Mate me (IObject _ imgId) _ _ = do
 --
 -- Ignore
 --
-runAction Ignore me (AObject other) _ _ = do
-  writeToLog $ agentId me ++ " ignores " ++ agentId other
+runAction Ignore me obj _ _ = do
+  writeToLog $ agentId me ++ " ignores " ++ objectId obj
   return [me]
-runAction Ignore me (IObject _ imgId) _ _ = do
-  writeToLog $ agentId me ++ " ignores image " ++ imgId
-  return [me]
+
 
 summarise :: [[Statistic]] -> StateT (SimpleUniverse Astronomer) IO ()
 summarise xs = do
-  writeToLog $ pretty (maxStats xs)
-  writeToLog $ pretty (minStats xs)
-  writeToLog $ pretty (avgStats xs)
+  writeToLog $ "Summary - maxima: " ++ pretty (maxStats xs)
+  writeToLog $ "Summary - minima: " ++ pretty (minStats xs)
+  writeToLog $ "Summary - averages: " ++ pretty (avgStats xs)
+  writeToLog $ "Summary - totals: " ++ pretty (sumStats xs)

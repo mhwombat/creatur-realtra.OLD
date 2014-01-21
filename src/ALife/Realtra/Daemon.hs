@@ -16,7 +16,12 @@ import ALife.Realtra.Wain (run, summarise)
 import qualified ALife.Realtra.Config as Config
 import ALife.Creatur.Daemon (Daemon(..), launch)
 import ALife.Creatur.Universe.Task (simpleDaemon, runInteractingAgents)
+import Paths_creatur_realtra (version)
+import Data.Version (showVersion)
 
 main :: IO ()
-main = launch simpleDaemon{task=runInteractingAgents run summarise}
-         Config.universe
+main = launch daemon Config.universe
+  where daemon = (simpleDaemon programName)
+                   {task=runInteractingAgents run summarise}
+        programName = "Réaltra v" ++ showVersion version
+
