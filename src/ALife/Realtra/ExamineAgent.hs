@@ -13,9 +13,8 @@
 {-# LANGUAGE TypeFamilies #-}
 module Main where
 
-import ALife.Creatur.Database as D (Database, DBRecord)
-import ALife.Creatur.Universe (Universe, agentIds, getAgent)
-import ALife.Creatur.Clock (currentTime)
+import ALife.Creatur.Universe (SimpleUniverse, agentIds, getAgent,
+  currentTime)
 import ALife.Realtra.Wain (Astronomer)
 import qualified ALife.Realtra.Config as Config
 import Control.Monad.State (StateT, evalStateT)
@@ -23,15 +22,13 @@ import Control.Monad.IO.Class (liftIO)
 import System.Environment (getArgs)
 
 getAndExamineAll
-  :: (Database d, DBRecord d ~ Astronomer)
-    => StateT (Universe c l d n x Astronomer) IO ()
+  :: StateT (SimpleUniverse Astronomer) IO ()
 getAndExamineAll = do
   names <- agentIds
   mapM_ getAndExamine names
   
 getAndExamine
-  :: (Database d, DBRecord d ~ Astronomer)
-    => String -> StateT (Universe c l d n x Astronomer) IO ()
+  :: String -> StateT (SimpleUniverse Astronomer) IO ()
 getAndExamine s = do
   a <- getAgent s
   case a of
@@ -44,7 +41,7 @@ examine a = do
 
 main :: IO ()
 main = do
-  t <- evalStateT currentTime Config.universe
+  t <- evalStateT currentTime (Config.universe :: SimpleUniverse Astronomer)
   putStrLn $ "Universe time is " ++ show t
 
   args <- getArgs

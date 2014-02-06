@@ -20,6 +20,14 @@ import Data.Word (Word8, Word16)
 universe :: SimpleUniverse a
 universe = mkSimpleUniverse "GalaxyZoo" "/home/amy/alife/gzoo1" 100000
 
+statsFile :: FilePath
+statsFile = "/home/amy/alife/gzoo1/stats"
+
+-- | Number of microseconds to sleep after each agent gets its turn at
+--   the CPU.
+sleepBetweenTasks :: Int
+sleepBetweenTasks = 100
+
 imageDB :: ImageDB
 imageDB = mkImageDB "/home/amy/GalaxyZoo/table2/tiny-images"
 
@@ -47,10 +55,21 @@ maxDeciderSize = 5
 
 -- | The maximum age at which wains mature in the initial population.
 maxAgeOfMaturity :: Word16
-maxAgeOfMaturity = 200
+maxAgeOfMaturity = 2 -- 200
 
+-- | The size of the initial population.
 initialPopulationSize :: Int
 initialPopulationSize = 5
+
+-- | The maximum population size.
+--   As the population increases toward this limit, the metabolism
+--   cost increases, ensuring that only the fittest individuals
+--   survive.
+--   Note: It's unlikely the population will actually reach this limit
+--   (because the metabolism costs will be so high), so set this value
+--   a bit higher than your desired maximum population.
+maxPopulationSize :: Int
+maxPopulationSize = 15
 
 --
 -- Rewards and penalties
@@ -103,7 +122,7 @@ energyDeltaPerClassifierModel = -0.001
 -- based on normalised chi-squared (to discourage wasted categories)
 -- This is normally an energy LOSS, so it should be negative.
 conflationEnergyDeltaFactor :: Double
-conflationEnergyDeltaFactor = 0.001
+conflationEnergyDeltaFactor = -0.001
 
 -- See also cooperationAgreementDelta
 

@@ -16,8 +16,8 @@ import ALife.Realtra.Wain (Astronomer, randomAstronomer, summarise)
 import ALife.Creatur.Wain.Pretty (pretty)
 import ALife.Creatur.Wain.Statistics (Statistic, stats)
 import qualified ALife.Realtra.Config as Config
-import ALife.Creatur.Logger (writeToLog)
-import ALife.Creatur.Universe (SimpleUniverse, addAgent)
+import ALife.Creatur.Universe (writeToLog)
+import ALife.Creatur.Universe (SimpleUniverse, store)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Random (evalRandIO)
 import Control.Monad.State.Lazy (StateT, evalStateT)
@@ -25,15 +25,18 @@ import Control.Monad.State.Lazy (StateT, evalStateT)
 names :: [String]
 names = map (("Founder" ++) . show) [1..Config.initialPopulationSize]
 
-introduceRandomAgent :: String -> StateT (SimpleUniverse Astronomer) IO [Statistic]
+introduceRandomAgent
+  :: String
+    -> StateT (SimpleUniverse Astronomer) IO [Statistic]
 introduceRandomAgent name = do
   agent <- liftIO $ evalRandIO (randomAstronomer name)
   writeToLog $ "GeneratePopulation: Created " ++ agentId agent
   writeToLog $ "GeneratePopulation: Stats " ++ pretty (stats agent)
-  addAgent agent
+  store agent
   return (stats agent)
 
-introduceRandomAgents :: [String] -> StateT (SimpleUniverse Astronomer) IO ()
+introduceRandomAgents
+  :: [String] -> StateT (SimpleUniverse Astronomer) IO ()
 introduceRandomAgents ns = do
   xs <- mapM introduceRandomAgent ns
   summarise xs

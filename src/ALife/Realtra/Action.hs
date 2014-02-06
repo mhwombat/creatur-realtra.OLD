@@ -24,7 +24,7 @@ import GHC.Generics (Generic)
 import System.Random (Random, random, randomR)
 
 -- The actions are listed in order of decreasing genetic dominance.
-data Action = Cooperate | Mate | Ignore
+data Action = Cooperate | Flirt | Ignore
   deriving (Show, Eq, Ord, Enum, Bounded, Generic)
 instance Serialize Action
 instance Genetic Action

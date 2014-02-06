@@ -12,16 +12,28 @@
 ------------------------------------------------------------------------
 module Main where
 
-import ALife.Realtra.Wain (run, summarise)
+import ALife.Realtra.Wain (run, finishRound)
 import qualified ALife.Realtra.Config as Config
 import ALife.Creatur.Daemon (Daemon(..), launch)
-import ALife.Creatur.Universe.Task (simpleDaemon, runInteractingAgents)
-import Paths_creatur_realtra (version)
+import ALife.Creatur.Universe (Universe, writeToLog)
+import ALife.Creatur.Task (simpleDaemon, runInteractingAgents)
+import Control.Monad.State (execStateT)
 import Data.Version (showVersion)
+import Paths_creatur_realtra (version)
+
+startupHandler :: Universe u => String -> u -> IO u
+startupHandler programName = execStateT (writeToLog $ "Starting " ++ programName)
+
+shutdownHandler :: Universe u => String -> u -> IO ()
+shutdownHandler programName u =
+  execStateT (writeToLog $ "Shutdown requested for " ++ programName) u
+  >> return ()
 
 main :: IO ()
 main = launch daemon Config.universe
-  where daemon = (simpleDaemon programName)
-                   {task=runInteractingAgents run summarise}
+  where daemon = simpleDaemon
+                   {task=runInteractingAgents run finishRound,
+                    onStartup=startupHandler programName,
+                    onShutdown=shutdownHandler programName,
+                    sleepTime=Config.sleepBetweenTasks}
         programName = "Réaltra v" ++ showVersion version
-

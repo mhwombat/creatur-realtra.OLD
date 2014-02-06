@@ -10,33 +10,38 @@
 -- A data mining agent, designed for the Créatúr framework.
 --
 ------------------------------------------------------------------------
-{-# LANGUAGE TypeFamilies, FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies, FlexibleContexts, ScopedTypeVariables #-}
 module ALife.Realtra.Wain
   (
     Astronomer,
     run,
     randomAstronomer,
+    finishRound,
     summarise
   ) where
 
 import ALife.Creatur (Agent, agentId)
-import ALife.Creatur.Logger (writeToLog)
-import ALife.Creatur.Universe (SimpleUniverse)
+import ALife.Creatur.Genetics.Reproduction.Sexual (Reproductive,
+  makeOffspring)
+import ALife.Creatur.Universe (Universe, writeToLog, popSize,
+  genName)
 import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
-  tryMating, numberOfClassifierModels, numberOfDeciderModels,
-  conflation, chooseAction, randomWain, classify, teachLabel, hasChild,
-  weanChildIfReady, incAge)
+  numberOfClassifierModels, numberOfDeciderModels,
+  conflation, chooseAction, randomWain, classify, teachLabel, hasLitter,
+  incAge, coolPassion)
 import ALife.Creatur.Wain.Pretty (pretty)
-import ALife.Creatur.Wain.Statistics (Statistical, Statistic, stats,
-  maxStats, minStats, avgStats, sumStats, dStat, iStat)
+import qualified ALife.Creatur.Wain.Statistics as Stats
 import ALife.Realtra.Action (Action(..))
 import qualified ALife.Realtra.Config as Config
+import ALife.Realtra.Statistics (updateStats, readStats, clearStats,
+  summarise)
 import ALife.Realtra.Image (Image, stripedImage, randomImage)
 import ALife.Realtra.ImageDB (anyImage)
 import Control.Monad (replicateM)
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Random (Rand, RandomGen ) --, evalRandIO, fromList)
+import Control.Monad.Random (Rand, RandomGen, evalRandIO)
 import Control.Monad.State.Lazy (StateT, evalStateT)
+import Data.List (partition)
 import System.Random (randomIO, randomRIO)
 
 type Astronomer = Wain Image Action
@@ -49,59 +54,117 @@ randomAstronomer wainName = do
   randomWain wainName app Config.maxClassifierSize imgs
     Config.maxDeciderSize Config.maxAgeOfMaturity
 
--- TODO Clean up this code
+data Result = Result
+  {
+    classifierEnergyDelta :: Double,
+    deciderEnergyDelta :: Double,
+    conflationEnergyDelta :: Double,
+    overpopulationEnergyDelta :: Double,
+    childRearingEnergyDelta :: Double,
+    coopEnergyDelta :: Double,
+    flirtingEnergyDelta :: Double,
+    birthCount :: Int,
+    weanCount :: Int,
+    cooperateCount :: Int,
+    agreeCount :: Int,
+    flirtCount :: Int,
+    mateCount :: Int,
+    ignoreCount :: Int
+  }
+
+initResult :: Result
+initResult = Result
+  {
+    classifierEnergyDelta = 0,
+    deciderEnergyDelta = 0,
+    conflationEnergyDelta = 0,
+    overpopulationEnergyDelta = 0,
+    childRearingEnergyDelta = 0,
+    coopEnergyDelta = 0,
+    flirtingEnergyDelta = 0,
+    birthCount = 0,
+    weanCount = 0,
+    cooperateCount = 0,
+    agreeCount = 0,
+    flirtCount = 0,
+    mateCount = 0,
+    ignoreCount = 0
+  }
+
+resultStats :: Result -> [Stats.Statistic]
+resultStats r =
+  [
+    Stats.dStat "classifier Δe" (classifierEnergyDelta r),
+    Stats.dStat "decider Δe" (deciderEnergyDelta r),
+    Stats.dStat "conflation Δe" (conflationEnergyDelta r),
+    Stats.dStat "pop Δe" (overpopulationEnergyDelta r),
+    Stats.dStat "child rearing Δe" (childRearingEnergyDelta r),
+    Stats.dStat "cooperation Δe" (coopEnergyDelta r),
+    Stats.dStat "flirting Δe" (flirtingEnergyDelta r),
+    Stats.iStat "bore" (birthCount r),
+    Stats.iStat "weaned" (weanCount r),
+    Stats.iStat "co-operated" (cooperateCount r),
+    Stats.iStat "agreed" (agreeCount r),
+    Stats.iStat "flirted" (flirtCount r),
+    Stats.iStat "mated" (mateCount r),
+    Stats.iStat "ignored" (ignoreCount r)
+  ]
+
+runMetabolism ::  (Astronomer, Result) -> Int -> (Astronomer, Result)
+runMetabolism (a, r) n = (a', r')
+  where a' = adjustPassion Config.passionDelta $ adjustEnergy deltaE a
+        r' = r {
+                 classifierEnergyDelta = ced,
+                 deciderEnergyDelta = ded,
+                 conflationEnergyDelta = confl,
+                 overpopulationEnergyDelta = oed,
+                 childRearingEnergyDelta = cred
+               }
+        deltaE = ced + ded + confl + oed
+        ced = Config.energyDeltaPerClassifierModel
+                       * fromIntegral (numberOfClassifierModels a)
+        ded = Config.energyDeltaPerDeciderModel
+                           * fromIntegral (numberOfDeciderModels a)
+        confl = Config.conflationEnergyDeltaFactor * (conflation a)
+        oed = - (min 1 (overpopulationFactor ^ (16::Int)))
+        cred = (fromIntegral . length $ litter a)
+                   * Config.childRearingEnergyDelta
+        overpopulationFactor
+          = fromIntegral n / fromIntegral Config.maxPopulationSize
+
 run
-  :: [Astronomer]
-    -> StateT (SimpleUniverse Astronomer) IO ([Astronomer], Maybe [Statistic])
+  :: Universe u
+    => [Astronomer] -> StateT u IO [Astronomer]
 run (me:xs) = do
   writeToLog $ "It's " ++ agentId me ++ "'s turn to shine"
-  let (me2, metabolismStats) = runMetabolism me
+  writeToLog $ "At beginning of turn, " ++ agentId me ++ "'s stats: "
+    ++ pretty (Stats.stats me)
+  k <- popSize
+  let (me2, r) = runMetabolism (me, initResult) k
   (x, y) <- chooseObjects xs
-  writeToLog $ "DEBUG: " ++ agentId me ++ " sees " ++ objectId x
-    ++ " and " ++ objectId y
-  writeToLog $ "DEBUG: " ++ agentId me ++ " stats: " ++ pretty (stats me)
+  -- writeToLog $ "DEBUG: " ++ agentId me ++ " sees " ++ objectId x
+  --   ++ " and " ++ objectId y
   (imgLabel, action, me3)
     <- chooseAction (objectAppearance x) (objectAppearance y) me2
   writeToLog $ agentId me ++ " sees " ++ objectId x ++ ", labels it "
     ++ show imgLabel ++ ", and chooses to " ++ show action
     ++ " with " ++ objectId y
-  (me4:others) <- runAction action me3 x y imgLabel
+  (me4:others, r4) <- runAction action (me3, r) x y imgLabel
   me5 <- incAge me4
-  us <- weanChildIfReady me5
-  let modifiedAgents = us ++ others
+  (me6:others6, r6) <- weanChildIfReady (me5:others, r4)
+  let stats = Stats.stats me ++ resultStats r6
   writeToLog $ "End of " ++ agentId me ++ "'s turn"
-  let allStats = stats me ++ metabolismStats
-  writeToLog $ agentId me ++ "'s stats: " ++ pretty allStats
+  writeToLog $ "At end of turn, " ++ agentId me ++ "'s stats: "
+    ++ pretty stats
+  let modifiedAgents = me6:others6
   writeToLog $ "Modified agents: " ++ show (map agentId modifiedAgents)
-  return (modifiedAgents, Just allStats)
+  updateStats stats
+  return modifiedAgents
 run _ = error "no more wains"
 
-runMetabolism :: Astronomer -> (Astronomer, [Statistic])
-runMetabolism me = (me', metabolismStats)
-  where classifierDelta = Config.energyDeltaPerClassifierModel
-                          * fromIntegral (numberOfClassifierModels me)
-        classifierStat = dStat "classifier Δe" classifierDelta
-        deciderDelta = Config.energyDeltaPerDeciderModel
-                          * fromIntegral (numberOfDeciderModels me)
-        deciderStat = dStat "decider Δe" deciderDelta
-        conflationDelta = Config.conflationEnergyDeltaFactor
-                            * (conflation me)
-        conflationStat = dStat "conflation Δe" conflationDelta
-        childDelta = if hasChild me
-                      then Config.childRearingEnergyDelta
-                      else 0
-        childStat = dStat "child rearing Δe" childDelta
-        passionStat = dStat "Δp" Config.passionDelta
-        metabolismDelta = classifierDelta + deciderDelta
-                            + conflationDelta + childDelta
-        adultPopStat = iStat "adult pop." 1
-        childPopStat = iStat "child pop." $ if hasChild me then 1 else 0
-        metabolismStats = [classifierStat, deciderStat, conflationStat,
-          childStat, passionStat, adultPopStat, childPopStat]
-        me' = adjustPassion Config.passionDelta
-                . adjustEnergy metabolismDelta $ me
-
-chooseObjects :: [Astronomer] -> StateT (SimpleUniverse Astronomer) IO (Object, Object)
+chooseObjects
+  :: Universe u
+    => [Astronomer] -> StateT u IO (Object, Object)
 chooseObjects xs = do
   -- writeToLog $ "Direct object = " ++ objectId x
   -- writeToLog $ "Indirect object = " ++ objectId y
@@ -130,62 +193,162 @@ randomlyInsertImages xs = do
     else
       return xs
 
-runAction :: Action -> Astronomer -> Object -> Object -> Label
-  -> StateT (SimpleUniverse Astronomer) IO [Astronomer]
+runAction
+  :: Universe u
+    => Action -> (Astronomer, Result) -> Object -> Object -> Label
+      -> StateT u IO ([Astronomer], Result)
 
 --
 -- Co-operate
 --
-runAction Cooperate me dObj (AObject other) myLabel = do
+runAction Cooperate (a, r) dObj (AObject b) aLabel = do
   let dObjId = objectId dObj
   let dObjApp = objectAppearance dObj
-  writeToLog $ agentId me ++ " tells " ++ agentId other
+  writeToLog $ agentId a ++ " tells " ++ agentId b
     ++ " that image " ++ dObjId ++ " has label "
-    ++ show myLabel
-  let (otherLabel, other') = classify dObjApp other
-  if myLabel == otherLabel
-    then do
-       writeToLog $ agentId other ++ " agrees with " ++  agentId me
-         ++ " that " ++ dObjId ++ " has label "
-         ++ show myLabel
-       return [adjustEnergy (Config.cooperationEnergyDelta
-                 + Config.cooperationAgreementDelta) me, other']
-    else do
-       writeToLog $ agentId other ++ " disagrees with " ++  agentId me
-         ++ ", says that " ++ dObjId ++ " has label "
-         ++ show otherLabel
-       writeToLog $ agentId me ++ " is learning"
-       writeToLog $ agentId other' ++ " is learning"
-       me' <- teachLabel dObjApp otherLabel
-               . adjustEnergy Config.cooperationEnergyDelta $ me
-       other'' <- teachLabel dObjApp myLabel other'
-       return [me', other'']
-runAction Cooperate me _ _ _ = do
-  writeToLog $ agentId me ++ " tries to co-operate with an image"
-  return [adjustEnergy Config.cooperationEnergyDelta me]
+    ++ show aLabel
+  let (bLabel, b') = classify dObjApp b
+  if aLabel == bLabel
+    then agree ([a,b'], r) dObj aLabel
+    else disagree ([a,b'], r) dObj aLabel bLabel
+runAction Cooperate (a, r) _ _ _ = do
+  writeToLog $ agentId a ++ " tries to co-operate with an image"
+  return $ rewardCooperation ([a], r)
   
 --
--- Mate
+-- Flirt
 --
-runAction Mate me (AObject other) _ _ = do
-  writeToLog $ agentId me ++ " looks for a mate"
-  tryMating me other Config.flirtingEnergyDelta Config.matingEnergyDelta
+runAction Flirt (a, r) (AObject b) _ _ = do
+  writeToLog $ agentId a ++ " looks for a mate"
+  tryMating ([a, b], r)
 
-runAction Mate me (IObject _ imgId) _ _ = do
-  writeToLog $ agentId me ++ " flirted with image " ++ imgId
-  return [adjustEnergy Config.flirtingEnergyDelta me]
+runAction Flirt (a, r) (IObject _ imgId) _ _ = do
+  writeToLog $ agentId a ++ " flirted with image " ++ imgId
+  return $ rewardFlirtation ([a], r)
 
 --
 -- Ignore
 --
-runAction Ignore me obj _ _ = do
-  writeToLog $ agentId me ++ " ignores " ++ objectId obj
-  return [me]
+runAction Ignore (a, r) obj _ _ = do
+  writeToLog $ agentId a ++ " ignores " ++ objectId obj
+  return ([a], r { ignoreCount = ignoreCount r + 1 })
 
+--
+-- Utility functions
+--
+agree
+  :: Universe u
+    => ([Astronomer], Result) -> Object -> Label
+      -> StateT u IO ([Astronomer], Result)
+agree x@((a:b:_), _) dObj label = do
+  let dObjId = objectId dObj
+  writeToLog $ agentId b ++ " agrees with " ++  agentId a
+    ++ " that " ++ dObjId ++ " has label " ++ show label
+  return . rewardCooperation $ rewardAgreement x
+agree _ _ _ = error "Passed too few agents to agree"
 
-summarise :: [[Statistic]] -> StateT (SimpleUniverse Astronomer) IO ()
-summarise xs = do
-  writeToLog $ "Summary - maxima: " ++ pretty (maxStats xs)
-  writeToLog $ "Summary - minima: " ++ pretty (minStats xs)
-  writeToLog $ "Summary - averages: " ++ pretty (avgStats xs)
-  writeToLog $ "Summary - totals: " ++ pretty (sumStats xs)
+disagree
+  :: Universe u
+    => ([Astronomer], Result) -> Object -> Label -> Label
+      -> StateT u IO ([Astronomer], Result)
+disagree ((a:b:cs), r) dObj aLabel bLabel = do
+  let dObjId = objectId dObj
+  let dObjApp = objectAppearance dObj
+  writeToLog $ agentId b ++ " disagrees with " ++  agentId a
+    ++ ", says that " ++ dObjId ++ " has label "
+    ++ show bLabel
+  a' <- teachLabel dObjApp bLabel
+          . adjustEnergy Config.cooperationEnergyDelta $ a
+  b' <- teachLabel dObjApp aLabel b
+  return . rewardCooperation $ rewardAgreement (a':b':cs,r)
+disagree _ _ _ _ = error "Passed too few agents to disagree"
+
+rewardCooperation :: ([Astronomer], Result) -> ([Astronomer], Result)
+rewardCooperation (a:bs, r) = (a':bs, r')
+  where a' = adjustEnergy deltaE a
+        r' = r { coopEnergyDelta = coopEnergyDelta r + deltaE,
+                 cooperateCount = cooperateCount r + 1}
+        deltaE = Config.cooperationEnergyDelta
+rewardCooperation _ = error "Passed too few agents to rewardCooperation"
+
+rewardAgreement :: ([Astronomer], Result) -> ([Astronomer], Result)
+rewardAgreement (a:b:cs, r) = (a':b':cs, r')
+  where a' = adjustEnergy deltaE a
+        b' = adjustEnergy deltaE b
+        r' = r { coopEnergyDelta = coopEnergyDelta r + deltaE,
+                 agreeCount = agreeCount r + 1}
+        deltaE = Config.cooperationAgreementDelta
+rewardAgreement _ = error "Passed too few agents to rewardAgreement"
+
+tryMating
+  :: Universe u
+    => ([Astronomer], Result) -> StateT u IO ([Astronomer], Result)
+tryMating x@((a:b:_), _)
+  | hasLitter a    = do
+      writeToLog $ agentId a ++ " is already rearing a child"
+      return $ rewardFlirtation x
+  | hasLitter b = do
+      writeToLog $ agentId b ++ " is already rearing a child"
+      return $ rewardFlirtation x
+  | otherwise      = do
+      writeToLog $ agentId b ++ " is willing"
+      breed (rewardFlirtation x) >>= mate 
+tryMating _ = error "Passed too few agents to tryMating"
+
+rewardFlirtation :: ([Astronomer], Result) -> ([Astronomer], Result)
+rewardFlirtation (a:bs, r) = (a':bs, r')
+  where a' = adjustEnergy deltaE a
+        r' = r { flirtingEnergyDelta=flirtingEnergyDelta r + deltaE,
+                 flirtCount=flirtCount r + 1}
+        deltaE = Config.flirtingEnergyDelta
+rewardFlirtation _ = error "Passed too few agents to rewardFlirtation"
+
+mate
+  :: Universe u
+    => ([Astronomer], Result) -> StateT u IO ([Astronomer], Result)
+mate ((a:b:cs), r) = do
+  writeToLog $ agentId a ++ " mates with " ++ agentId b
+  let r' = r { mateCount=mateCount r + 1 }
+  return (coolPassion a:coolPassion b:cs, r')
+mate _ = error "Passed too few agents to mate"
+
+breed
+  :: Universe u
+    => ([Astronomer], Result)
+      -> StateT u IO ([Astronomer], Result)
+breed ((a:b:cs), r) = do
+  babyName <- genName
+  result <- liftIO $ evalRandIO (makeOffspring a b babyName)
+  case result of
+    Right baby -> do
+      writeToLog $ agentId a ++ " and " ++ agentId b ++ " produce "
+        ++ babyName
+      return ((a {litter=[baby]}):b:cs, r {birthCount=birthCount r +1})
+    Left msgs -> do
+      writeToLog $ "child of " ++ agentId a ++ " and " ++ agentId b
+        ++ " not viable: " ++ show msgs
+      return (a:b:cs, r)
+breed _ = error "Passed too few agents to breed"
+
+weanChildIfReady
+  :: ([Astronomer], Result) -> StateT u IO ([Astronomer], Result)
+weanChildIfReady (a:as, r) =
+  if null (litter a)
+    then return ([a],r)
+    else do
+      let (weanlings,babes) = partition mature (litter a)
+--      mapM_ (\c -> writeToLog $ "Weaning " ++ agentId c) weanlings
+      let a' = a {litter=babes}
+      let r' = r {weanCount=weanCount r + length weanlings}
+      return (a':weanlings++as, r')
+weanChildIfReady _ = error "Passed too few agents to weanChildIfReady"
+
+mature :: Astronomer -> Bool
+mature c = age c >= ageOfMaturity c
+
+finishRound :: Universe u => StateT u IO ()
+finishRound = do
+  xs <- readStats
+  summarise xs
+  clearStats
+
