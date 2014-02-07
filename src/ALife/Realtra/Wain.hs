@@ -21,27 +21,23 @@ module ALife.Realtra.Wain
   ) where
 
 import ALife.Creatur (Agent, agentId)
-import ALife.Creatur.Genetics.Reproduction.Sexual (Reproductive,
-  makeOffspring)
-import ALife.Creatur.Universe (Universe, writeToLog, popSize,
-  genName)
+import ALife.Creatur.Universe (Universe, writeToLog, popSize)
 import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
   numberOfClassifierModels, numberOfDeciderModels,
-  conflation, chooseAction, randomWain, classify, teachLabel, hasLitter,
-  incAge, coolPassion)
+  conflation, chooseAction, randomWain, classify, teachLabel,
+  incAge, weanMatureChildren, tryMating)
 import ALife.Creatur.Wain.Pretty (pretty)
 import qualified ALife.Creatur.Wain.Statistics as Stats
 import ALife.Realtra.Action (Action(..))
 import qualified ALife.Realtra.Config as Config
-import ALife.Realtra.Statistics (updateStats, readStats, clearStats,
-  summarise)
+import ALife.Creatur.Wain.PersistentStatistics (updateStats, readStats,
+  clearStats, summarise)
 import ALife.Realtra.Image (Image, stripedImage, randomImage)
 import ALife.Realtra.ImageDB (anyImage)
 import Control.Monad (replicateM)
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Random (Rand, RandomGen, evalRandIO)
+import Control.Monad.Random (Rand, RandomGen)
 import Control.Monad.State.Lazy (StateT, evalStateT)
-import Data.List (partition)
 import System.Random (randomIO, randomRIO)
 
 type Astronomer = Wain Image Action
@@ -151,14 +147,14 @@ run (me:xs) = do
     ++ " with " ++ objectId y
   (me4:others, r4) <- runAction action (me3, r) x y imgLabel
   me5 <- incAge me4
-  (me6:others6, r6) <- weanChildIfReady (me5:others, r4)
+  (me6:weanlings, r6) <- wean (me5, r4)
   let stats = Stats.stats me ++ resultStats r6
   writeToLog $ "End of " ++ agentId me ++ "'s turn"
   writeToLog $ "At end of turn, " ++ agentId me ++ "'s stats: "
     ++ pretty stats
-  let modifiedAgents = me6:others6
+  let modifiedAgents = me6:weanlings ++ others
   writeToLog $ "Modified agents: " ++ show (map agentId modifiedAgents)
-  updateStats stats
+  updateStats stats Config.statsFile
   return modifiedAgents
 run _ = error "no more wains"
 
@@ -220,11 +216,12 @@ runAction Cooperate (a, r) _ _ _ = do
 --
 runAction Flirt (a, r) (AObject b) _ _ = do
   writeToLog $ agentId a ++ " looks for a mate"
-  tryMating ([a, b], r)
+  flirt (a, r) b
 
 runAction Flirt (a, r) (IObject _ imgId) _ _ = do
   writeToLog $ agentId a ++ " flirted with image " ++ imgId
-  return $ rewardFlirtation ([a], r)
+  let (a', r') = rewardFlirtation (a, r)
+  return ([a'], r')
 
 --
 -- Ignore
@@ -260,7 +257,7 @@ disagree ((a:b:cs), r) dObj aLabel bLabel = do
   a' <- teachLabel dObjApp bLabel
           . adjustEnergy Config.cooperationEnergyDelta $ a
   b' <- teachLabel dObjApp aLabel b
-  return . rewardCooperation $ rewardAgreement (a':b':cs,r)
+  return $ rewardCooperation (a':b':cs,r)
 disagree _ _ _ _ = error "Passed too few agents to disagree"
 
 rewardCooperation :: ([Astronomer], Result) -> ([Astronomer], Result)
@@ -280,75 +277,37 @@ rewardAgreement (a:b:cs, r) = (a':b':cs, r')
         deltaE = Config.cooperationAgreementDelta
 rewardAgreement _ = error "Passed too few agents to rewardAgreement"
 
-tryMating
+flirt
   :: Universe u
-    => ([Astronomer], Result) -> StateT u IO ([Astronomer], Result)
-tryMating x@((a:b:_), _)
-  | hasLitter a    = do
-      writeToLog $ agentId a ++ " is already rearing a child"
-      return $ rewardFlirtation x
-  | hasLitter b = do
-      writeToLog $ agentId b ++ " is already rearing a child"
-      return $ rewardFlirtation x
-  | otherwise      = do
-      writeToLog $ agentId b ++ " is willing"
-      breed (rewardFlirtation x) >>= mate 
-tryMating _ = error "Passed too few agents to tryMating"
+    => (Astronomer, Result) -> Astronomer
+      -> StateT u IO ([Astronomer], Result)
+flirt (a, r) b = do
+  let (a', r') = rewardFlirtation (a, r)
+  (ws, mated) <- tryMating a' b
+  if mated
+    then return (ws, r' { mateCount = mateCount r + 1,
+                          birthCount = birthCount r
+                            + (length . litter $ head ws) })
+    else return (ws, r')
 
-rewardFlirtation :: ([Astronomer], Result) -> ([Astronomer], Result)
-rewardFlirtation (a:bs, r) = (a':bs, r')
+rewardFlirtation :: (Astronomer, Result) -> (Astronomer, Result)
+rewardFlirtation (a, r) = (a', r')
   where a' = adjustEnergy deltaE a
         r' = r { flirtingEnergyDelta=flirtingEnergyDelta r + deltaE,
                  flirtCount=flirtCount r + 1}
         deltaE = Config.flirtingEnergyDelta
-rewardFlirtation _ = error "Passed too few agents to rewardFlirtation"
 
-mate
+wean
   :: Universe u
-    => ([Astronomer], Result) -> StateT u IO ([Astronomer], Result)
-mate ((a:b:cs), r) = do
-  writeToLog $ agentId a ++ " mates with " ++ agentId b
-  let r' = r { mateCount=mateCount r + 1 }
-  return (coolPassion a:coolPassion b:cs, r')
-mate _ = error "Passed too few agents to mate"
-
-breed
-  :: Universe u
-    => ([Astronomer], Result)
-      -> StateT u IO ([Astronomer], Result)
-breed ((a:b:cs), r) = do
-  babyName <- genName
-  result <- liftIO $ evalRandIO (makeOffspring a b babyName)
-  case result of
-    Right baby -> do
-      writeToLog $ agentId a ++ " and " ++ agentId b ++ " produce "
-        ++ babyName
-      return ((a {litter=[baby]}):b:cs, r {birthCount=birthCount r +1})
-    Left msgs -> do
-      writeToLog $ "child of " ++ agentId a ++ " and " ++ agentId b
-        ++ " not viable: " ++ show msgs
-      return (a:b:cs, r)
-breed _ = error "Passed too few agents to breed"
-
-weanChildIfReady
-  :: ([Astronomer], Result) -> StateT u IO ([Astronomer], Result)
-weanChildIfReady (a:as, r) =
-  if null (litter a)
-    then return ([a],r)
-    else do
-      let (weanlings,babes) = partition mature (litter a)
---      mapM_ (\c -> writeToLog $ "Weaning " ++ agentId c) weanlings
-      let a' = a {litter=babes}
-      let r' = r {weanCount=weanCount r + length weanlings}
-      return (a':weanlings++as, r')
-weanChildIfReady _ = error "Passed too few agents to weanChildIfReady"
-
-mature :: Astronomer -> Bool
-mature c = age c >= ageOfMaturity c
+    => (Astronomer, Result) -> StateT u IO ([Astronomer], Result)
+wean (a, r) = do
+  as <- weanMatureChildren a
+  let r' = r { weanCount = weanCount r + length as - 1 }
+  return (as, r')
 
 finishRound :: Universe u => StateT u IO ()
 finishRound = do
-  xs <- readStats
+  xs <- readStats Config.statsFile
   summarise xs
-  clearStats
+  clearStats Config.statsFile
 
