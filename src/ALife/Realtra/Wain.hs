@@ -23,7 +23,6 @@ module ALife.Realtra.Wain
 import ALife.Creatur (Agent, agentId)
 import ALife.Creatur.Universe (Universe, writeToLog, popSize)
 import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
-  numberOfClassifierModels, numberOfDeciderModels,
   conflation, chooseAction, randomWain, classify, teachLabel,
   incAge, weanMatureChildren, tryMating)
 import ALife.Creatur.Wain.Pretty (pretty)
@@ -34,26 +33,27 @@ import ALife.Creatur.Wain.PersistentStatistics (updateStats, readStats,
   clearStats, summarise)
 import ALife.Realtra.Image (Image, stripedImage, randomImage)
 import ALife.Realtra.ImageDB (anyImage)
-import Control.Monad (replicateM)
+import Control.Monad (replicateM, when)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Random (Rand, RandomGen)
 import Control.Monad.State.Lazy (StateT, evalStateT)
+import Data.Word (Word8)
 import System.Random (randomIO, randomRIO)
 
 type Astronomer = Wain Image Action
 
-randomAstronomer :: RandomGen r => String -> Rand r Astronomer
-randomAstronomer wainName = do
-  let n = fromIntegral $ 3*Config.maxDeciderSize*Config.maxDeciderSize
+randomAstronomer
+  :: RandomGen r => String -> Word8 -> Word8 -> Rand r Astronomer
+randomAstronomer wainName classifierSize deciderSize = do
+  let n = fromIntegral $ 3*classifierSize*deciderSize
   let app = stripedImage Config.imageWidth Config.imageHeight
   imgs <- replicateM n (randomImage Config.imageWidth Config.imageHeight)
-  randomWain wainName app Config.maxClassifierSize imgs
-    Config.maxDeciderSize Config.maxAgeOfMaturity
+  randomWain wainName app classifierSize imgs deciderSize
+    Config.initialPopulationMaxAgeOfMaturity
 
 data Result = Result
   {
-    classifierEnergyDelta :: Double,
-    deciderEnergyDelta :: Double,
+    sizeEnergyDelta :: Double,
     conflationEnergyDelta :: Double,
     overpopulationEnergyDelta :: Double,
     childRearingEnergyDelta :: Double,
@@ -71,8 +71,7 @@ data Result = Result
 initResult :: Result
 initResult = Result
   {
-    classifierEnergyDelta = 0,
-    deciderEnergyDelta = 0,
+    sizeEnergyDelta = 0,
     conflationEnergyDelta = 0,
     overpopulationEnergyDelta = 0,
     childRearingEnergyDelta = 0,
@@ -90,8 +89,7 @@ initResult = Result
 resultStats :: Result -> [Stats.Statistic]
 resultStats r =
   [
-    Stats.dStat "classifier Δe" (classifierEnergyDelta r),
-    Stats.dStat "decider Δe" (deciderEnergyDelta r),
+    Stats.dStat "size Δe" (sizeEnergyDelta r),
     Stats.dStat "conflation Δe" (conflationEnergyDelta r),
     Stats.dStat "pop Δe" (overpopulationEnergyDelta r),
     Stats.dStat "child rearing Δe" (childRearingEnergyDelta r),
@@ -108,19 +106,16 @@ resultStats r =
 
 runMetabolism ::  (Astronomer, Result) -> Int -> (Astronomer, Result)
 runMetabolism (a, r) n = (a', r')
-  where a' = adjustPassion Config.passionDelta $ adjustEnergy deltaE a
+  where a' = adjustPassion $ adjustEnergy deltaE a
         r' = r {
-                 classifierEnergyDelta = ced,
-                 deciderEnergyDelta = ded,
+                 sizeEnergyDelta = sed,
                  conflationEnergyDelta = confl,
                  overpopulationEnergyDelta = oed,
                  childRearingEnergyDelta = cred
                }
-        deltaE = ced + ded + confl + oed
-        ced = Config.energyDeltaPerClassifierModel
-                       * fromIntegral (numberOfClassifierModels a)
-        ded = Config.energyDeltaPerDeciderModel
-                           * fromIntegral (numberOfDeciderModels a)
+        deltaE = sed + confl + oed
+        sed = Config.energyDeltaPerByte
+                       * fromIntegral (size a)
         confl = Config.conflationEnergyDeltaFactor * (conflation a)
         oed = - (min 1 (overpopulationFactor ^ (16::Int)))
         cred = (fromIntegral . length $ litter a)
@@ -132,14 +127,18 @@ run
   :: Universe u
     => [Astronomer] -> StateT u IO [Astronomer]
 run (me:xs) = do
+  when (null xs) $ writeToLog "WARNING: Last wain standing!"
   writeToLog $ "It's " ++ agentId me ++ "'s turn to shine"
+  writeToLog $ "Next in line: " ++ show (map agentId $ take 3 xs)
   writeToLog $ "At beginning of turn, " ++ agentId me ++ "'s stats: "
     ++ pretty (Stats.stats me)
   k <- popSize
+  writeToLog $ "DEBUG pop size=" ++ show k
   let (me2, r) = runMetabolism (me, initResult) k
+  writeToLog $ "DEBUG metabolism finished"
   (x, y) <- chooseObjects xs
-  -- writeToLog $ "DEBUG: " ++ agentId me ++ " sees " ++ objectId x
-  --   ++ " and " ++ objectId y
+  writeToLog $ agentId me ++ " sees " ++ objectId x
+    ++ " and " ++ objectId y
   (imgLabel, action, me3)
     <- chooseAction (objectAppearance x) (objectAppearance y) me2
   writeToLog $ agentId me ++ " sees " ++ objectId x ++ ", labels it "

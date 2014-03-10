@@ -42,24 +42,24 @@ imageWidth = 21
 --   setting below controls the maximum length of one side of the grid,
 --   for the /initial/ population. The processing time required is
 --   proportional to the square of this value.
-maxClassifierSize :: Word8
-maxClassifierSize = 3
+initialPopulationMaxClassifierSize :: Word8
+initialPopulationMaxClassifierSize = 3
 
 -- | The decider portion of a wain's brain is also a SOM, using a
 --   hexagonal grid with hexagonal tiles. The setting below controls the
 --   maximum length of one side of the grid,
 --   for the /initial/ population. The processing time
 --   required is proportional to the square of this value.
-maxDeciderSize :: Word8
-maxDeciderSize = 5
+initialPopulationMaxDeciderSize :: Word8
+initialPopulationMaxDeciderSize = 5
 
 -- | The maximum age at which wains mature in the initial population.
-maxAgeOfMaturity :: Word16
-maxAgeOfMaturity = 2 -- 200
+initialPopulationMaxAgeOfMaturity :: Word16
+initialPopulationMaxAgeOfMaturity = 200
 
 -- | The size of the initial population.
 initialPopulationSize :: Int
-initialPopulationSize = 5
+initialPopulationSize = 100
 
 -- | The maximum population size.
 --   As the population increases toward this limit, the metabolism
@@ -69,7 +69,7 @@ initialPopulationSize = 5
 --   (because the metabolism costs will be so high), so set this value
 --   a bit higher than your desired maximum population.
 maxPopulationSize :: Int
-maxPopulationSize = 15
+maxPopulationSize = 500
 
 --
 -- Rewards and penalties
@@ -104,19 +104,21 @@ childRearingEnergyDelta = -0.005
 
 -- Note: Passion is reset to zero after mating.
 
--- Every time an agent gets a CPU turn, its passion changes by a fixed
--- amount.
--- This is normally a passion GAIN, so it should be positive.
-passionDelta :: Double
-passionDelta = 0.1
+-- -- Every time an agent gets a CPU turn, its passion changes by a fixed
+-- -- amount.
+-- -- This is normally a passion GAIN, so it should be positive.
+-- passionDelta :: Double
+-- passionDelta = 0.1
 
--- *** Controlling the size of the classifier
+-- *** Controlling an agent's CPU usage
 
 -- Every time an agent gets a CPU turn, its energy changes based on how
--- many classifier models it has.
+-- its size.
+-- Most of an agent's size is taken up by its brain, so the agent's size
+-- can be used as a proxy for its CPU usage.
 -- This is normally an energy LOSS, so it should be negative.
-energyDeltaPerClassifierModel :: Double
-energyDeltaPerClassifierModel = -0.001
+energyDeltaPerByte :: Double
+energyDeltaPerByte = -0.000001
 
 -- Every time an agent gets a CPU turn, its energy changes by an amount
 -- based on normalised chi-squared (to discourage wasted categories)
@@ -126,26 +128,18 @@ conflationEnergyDeltaFactor = -0.001
 
 -- See also cooperationAgreementDelta
 
--- *** Controlling the size of the decider
-
--- Every time an agent gets a CPU turn, its energy changes based on how
--- many decider models it has.
--- This is normally an energy LOSS, so it should be negative.
-energyDeltaPerDeciderModel :: Double
-energyDeltaPerDeciderModel = -0.001
-
 -- *** Controlling the frequency of co-operation
 
 -- When an agent initiates co-operation (trading classifications), its
 -- energy changes by a fixed amount.
 -- This is normally an energy LOSS, so it should be negative.
 cooperationEnergyDelta :: Double
-cooperationEnergyDelta = -0.1
+cooperationEnergyDelta = -0.01
 
 -- When two agents co-operate, and agree on a classification, their
 -- energy changes by a fixed amount.
 -- This is normally an energy GAIN, so it should be positive.
 cooperationAgreementDelta :: Double
-cooperationAgreementDelta = 0.3
+cooperationAgreementDelta = 1.0
 
 

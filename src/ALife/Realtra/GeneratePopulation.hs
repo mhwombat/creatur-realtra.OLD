@@ -20,6 +20,7 @@ import ALife.Creatur.Universe (writeToLog)
 import ALife.Creatur.Universe (SimpleUniverse, store)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Random (evalRandIO)
+import Control.Monad.Random.Class (getRandomR)
 import Control.Monad.State.Lazy (StateT, evalStateT)
 
 names :: [String]
@@ -29,7 +30,15 @@ introduceRandomAgent
   :: String
     -> StateT (SimpleUniverse Astronomer) IO [Statistic]
 introduceRandomAgent name = do
-  agent <- liftIO $ evalRandIO (randomAstronomer name)
+  classifierSize
+    <- liftIO . evalRandIO $
+        getRandomR (1,Config.initialPopulationMaxClassifierSize)
+  deciderSize
+    <- liftIO . evalRandIO $
+        getRandomR (1,Config.initialPopulationMaxDeciderSize)
+  agent
+    <- liftIO $
+        evalRandIO (randomAstronomer name classifierSize deciderSize)
   writeToLog $ "GeneratePopulation: Created " ++ agentId agent
   writeToLog $ "GeneratePopulation: Stats " ++ pretty (stats agent)
   store agent
