@@ -128,7 +128,7 @@ run
     => [Astronomer] -> StateT u IO [Astronomer]
 run (me:xs) = do
   when (null xs) $ writeToLog "WARNING: Last wain standing!"
-  writeToLog $ "It's " ++ agentId me ++ "'s turn to shine"
+  writeToLog $ "----- " ++ agentId me ++ "'s turn -----"
   writeToLog $ "Next in line: " ++ show (map agentId $ take 3 xs)
   writeToLog $ "At beginning of turn, " ++ agentId me ++ "'s stats: "
     ++ pretty (Stats.stats me)
