@@ -23,8 +23,8 @@ module ALife.Realtra.Wain
 import ALife.Creatur (Agent, agentId)
 import ALife.Creatur.Universe (Universe, writeToLog, popSize)
 import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
-  conflation, chooseAction, randomWain, classify, teachLabel,
-  incAge, weanMatureChildren, tryMating)
+  conflation, chooseAction, discrimination, randomWain, classify,
+  teachLabel, incAge, weanMatureChildren, tryMating, counterList)
 import ALife.Creatur.Wain.Pretty (pretty)
 import qualified ALife.Creatur.Wain.Statistics as Stats
 import ALife.Realtra.Action (Action(..))
@@ -56,6 +56,7 @@ data Result = Result
     sizeEnergyDelta :: Double,
     conflationEnergyDelta :: Double,
     overpopulationEnergyDelta :: Double,
+    discriminationEnergyDelta :: Double,
     childRearingEnergyDelta :: Double,
     coopEnergyDelta :: Double,
     flirtingEnergyDelta :: Double,
@@ -74,6 +75,7 @@ initResult = Result
     sizeEnergyDelta = 0,
     conflationEnergyDelta = 0,
     overpopulationEnergyDelta = 0,
+    discriminationEnergyDelta = 0,
     childRearingEnergyDelta = 0,
     coopEnergyDelta = 0,
     flirtingEnergyDelta = 0,
@@ -91,6 +93,7 @@ resultStats r =
   [
     Stats.dStat "size Δe" (sizeEnergyDelta r),
     Stats.dStat "conflation Δe" (conflationEnergyDelta r),
+    Stats.dStat "discrimination Δe" (discriminationEnergyDelta r),
     Stats.dStat "pop Δe" (overpopulationEnergyDelta r),
     Stats.dStat "child rearing Δe" (childRearingEnergyDelta r),
     Stats.dStat "cooperation Δe" (coopEnergyDelta r),
@@ -110,13 +113,16 @@ runMetabolism (a, r) n = (a', r')
         r' = r {
                  sizeEnergyDelta = sed,
                  conflationEnergyDelta = confl,
+                 discriminationEnergyDelta = disc,
                  overpopulationEnergyDelta = oed,
                  childRearingEnergyDelta = cred
                }
-        deltaE = sed + confl + oed
+        deltaE = sed + confl + disc + oed + cred
         sed = Config.energyDeltaPerByte
                        * fromIntegral (size a)
         confl = Config.conflationEnergyDeltaFactor * (conflation a)
+        disc = d*d
+        d = 1 - (discrimination a Config.maxCategories)
         oed = - (min 1 (overpopulationFactor ^ (16::Int)))
         cred = (fromIntegral . length $ litter a)
                    * Config.childRearingEnergyDelta
@@ -132,6 +138,8 @@ run (me:xs) = do
   writeToLog $ "Next in line: " ++ show (map agentId $ take 3 xs)
   writeToLog $ "At beginning of turn, " ++ agentId me ++ "'s stats: "
     ++ pretty (Stats.stats me)
+  writeToLog $ "DEBUG Classifier counters=" ++ show (counterList me)
+  writeToLog $ "DEBUG Classifier conflation=" ++ show (conflation me)
   k <- popSize
   writeToLog $ "DEBUG pop size=" ++ show k
   let (me2, r) = runMetabolism (me, initResult) k
@@ -141,6 +149,8 @@ run (me:xs) = do
     ++ " and " ++ objectId y
   (imgLabel, action, me3)
     <- chooseAction (objectAppearance x) (objectAppearance y) me2
+  writeToLog $ "DEBUG Classifier counters=" ++ show (counterList me)
+  writeToLog $ "DEBUG Classifier conflation=" ++ show (conflation me)
   writeToLog $ agentId me ++ " sees " ++ objectId x ++ ", labels it "
     ++ show imgLabel ++ ", and chooses to " ++ show action
     ++ " with " ++ objectId y

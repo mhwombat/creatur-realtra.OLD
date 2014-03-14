@@ -43,7 +43,7 @@ imageWidth = 21
 --   for the /initial/ population. The processing time required is
 --   proportional to the square of this value.
 initialPopulationMaxClassifierSize :: Word8
-initialPopulationMaxClassifierSize = 3
+initialPopulationMaxClassifierSize = 5
 
 -- | The decider portion of a wain's brain is also a SOM, using a
 --   hexagonal grid with hexagonal tiles. The setting below controls the
@@ -70,6 +70,13 @@ initialPopulationSize = 100
 --   a bit higher than your desired maximum population.
 maxPopulationSize :: Int
 maxPopulationSize = 500
+
+-- | The maximum number of categories for classification
+--   Note: It's unlikely the wains will actually reach this limit
+--   (because the metabolism costs will be so high), so set this value
+--   a bit higher than your desired maximum number of categories.
+maxCategories :: Int
+maxCategories = 100
 
 --
 -- Rewards and penalties
@@ -124,7 +131,7 @@ energyDeltaPerByte = -0.000001
 -- based on normalised chi-squared (to discourage wasted categories)
 -- This is normally an energy LOSS, so it should be negative.
 conflationEnergyDeltaFactor :: Double
-conflationEnergyDeltaFactor = -0.001
+conflationEnergyDeltaFactor = -0.05
 
 -- See also cooperationAgreementDelta
 

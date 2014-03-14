@@ -15,6 +15,7 @@ module Main where
 
 import ALife.Creatur.Universe (SimpleUniverse, agentIds, getAgent,
   currentTime)
+import ALife.Creatur.Wain (conflation)
 import ALife.Realtra.Wain (Astronomer)
 import qualified ALife.Realtra.Config as Config
 import Control.Monad.State (StateT, evalStateT)
@@ -38,6 +39,7 @@ getAndExamine s = do
 examine :: Astronomer -> IO ()
 examine a = do
   putStrLn $ show a
+  putStrLn $ "Conflation=" ++ show (conflation a)
 
 main :: IO ()
 main = do
