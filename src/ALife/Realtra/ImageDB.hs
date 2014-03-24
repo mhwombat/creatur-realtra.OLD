@@ -33,8 +33,11 @@ data ImageDB = ImageDB
     mainDir :: FilePath,
     images :: [FilePath],
     numImages :: Int
-  } deriving Show
-  
+  } deriving (Eq)
+
+instance Show ImageDB where
+  show db = mainDir db
+
 -- | @'mkImageDB' d@ (re)creates the ImageDB in the
 --   directory @d@.
 mkImageDB :: FilePath -> ImageDB

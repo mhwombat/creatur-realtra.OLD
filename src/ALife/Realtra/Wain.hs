@@ -24,11 +24,11 @@ import ALife.Creatur (Agent, agentId)
 import ALife.Creatur.Universe (Universe, writeToLog, popSize)
 import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
   conflation, chooseAction, discrimination, randomWain, classify,
-  teachLabel, incAge, weanMatureChildren, tryMating, counterList)
+  teachLabel, incAge, weanMatureChildren, tryMating)
 import ALife.Creatur.Wain.Pretty (pretty)
 import qualified ALife.Creatur.Wain.Statistics as Stats
 import ALife.Realtra.Action (Action(..))
-import qualified ALife.Realtra.Config as Config
+import qualified ALife.Realtra.Config as C
 import ALife.Creatur.Wain.PersistentStatistics (updateStats, readStats,
   clearStats, summarise)
 import ALife.Realtra.Image (Image, stripedImage, randomImage)
@@ -45,11 +45,13 @@ type Astronomer = Wain Image Action
 randomAstronomer
   :: RandomGen r => String -> Word8 -> Word8 -> Rand r Astronomer
 randomAstronomer wainName classifierSize deciderSize = do
-  let n = fromIntegral $ 3*classifierSize*deciderSize
-  let app = stripedImage Config.imageWidth Config.imageHeight
-  imgs <- replicateM n (randomImage Config.imageWidth Config.imageHeight)
+  let n = fromIntegral $ 3*classifierSize*classifierSize
+  let w = C.imageWidth C.config
+  let h = C.imageHeight C.config
+  let app = stripedImage w h
+  imgs <- replicateM n (randomImage w h)
   randomWain wainName app classifierSize imgs deciderSize
-    Config.initialPopulationMaxAgeOfMaturity
+    (C.initialPopulationMaxAgeOfMaturity C.config)
 
 data Result = Result
   {
@@ -58,6 +60,7 @@ data Result = Result
     overpopulationEnergyDelta :: Double,
     discriminationEnergyDelta :: Double,
     childRearingEnergyDelta :: Double,
+    totalMetabEnergyDelta :: Double,
     coopEnergyDelta :: Double,
     flirtingEnergyDelta :: Double,
     birthCount :: Int,
@@ -77,6 +80,7 @@ initResult = Result
     overpopulationEnergyDelta = 0,
     discriminationEnergyDelta = 0,
     childRearingEnergyDelta = 0,
+    totalMetabEnergyDelta = 0,
     coopEnergyDelta = 0,
     flirtingEnergyDelta = 0,
     birthCount = 0,
@@ -96,6 +100,7 @@ resultStats r =
     Stats.dStat "discrimination Δe" (discriminationEnergyDelta r),
     Stats.dStat "pop Δe" (overpopulationEnergyDelta r),
     Stats.dStat "child rearing Δe" (childRearingEnergyDelta r),
+    Stats.dStat "metab Δe" (totalMetabEnergyDelta r),
     Stats.dStat "cooperation Δe" (coopEnergyDelta r),
     Stats.dStat "flirting Δe" (flirtingEnergyDelta r),
     Stats.iStat "bore" (birthCount r),
@@ -115,31 +120,30 @@ runMetabolism (a, r) n = (a', r')
                  conflationEnergyDelta = confl,
                  discriminationEnergyDelta = disc,
                  overpopulationEnergyDelta = oed,
-                 childRearingEnergyDelta = cred
+                 childRearingEnergyDelta = cred,
+                 totalMetabEnergyDelta = deltaE
                }
         deltaE = sed + confl + disc + oed + cred
-        sed = Config.energyDeltaPerByte
+        sed = (C.energyDeltaPerByte C.config)
                        * fromIntegral (size a)
-        confl = Config.conflationEnergyDeltaFactor * (conflation a)
+        confl = (C.conflationEnergyDeltaFactor C.config) * (conflation a)
         disc = d*d
-        d = 1 - (discrimination a Config.maxCategories)
+        d = 1 - (discrimination a (C.maxCategories C.config))
         oed = - (min 1 (overpopulationFactor ^ (16::Int)))
         cred = (fromIntegral . length $ litter a)
-                   * Config.childRearingEnergyDelta
+                   * (C.childRearingEnergyDelta C.config)
         overpopulationFactor
-          = fromIntegral n / fromIntegral Config.maxPopulationSize
+          = fromIntegral n / fromIntegral (C.maxPopulationSize C.config)
 
 run
   :: Universe u
     => [Astronomer] -> StateT u IO [Astronomer]
 run (me:xs) = do
   when (null xs) $ writeToLog "WARNING: Last wain standing!"
-  writeToLog $ "----- " ++ agentId me ++ "'s turn -----"
+  writeToLog $ "---------- " ++ agentId me ++ "'s turn ----------"
   writeToLog $ "Next in line: " ++ show (map agentId $ take 3 xs)
   writeToLog $ "At beginning of turn, " ++ agentId me ++ "'s stats: "
     ++ pretty (Stats.stats me)
-  writeToLog $ "DEBUG Classifier counters=" ++ show (counterList me)
-  writeToLog $ "DEBUG Classifier conflation=" ++ show (conflation me)
   k <- popSize
   writeToLog $ "DEBUG pop size=" ++ show k
   let (me2, r) = runMetabolism (me, initResult) k
@@ -149,21 +153,19 @@ run (me:xs) = do
     ++ " and " ++ objectId y
   (imgLabel, action, me3)
     <- chooseAction (objectAppearance x) (objectAppearance y) me2
-  writeToLog $ "DEBUG Classifier counters=" ++ show (counterList me)
-  writeToLog $ "DEBUG Classifier conflation=" ++ show (conflation me)
   writeToLog $ agentId me ++ " sees " ++ objectId x ++ ", labels it "
     ++ show imgLabel ++ ", and chooses to " ++ show action
     ++ " with " ++ objectId y
   (me4:others, r4) <- runAction action (me3, r) x y imgLabel
   me5 <- incAge me4
   (me6:weanlings, r6) <- wean (me5, r4)
-  let stats = Stats.stats me ++ resultStats r6
+  let stats = Stats.stats me6 ++ resultStats r6
   writeToLog $ "End of " ++ agentId me ++ "'s turn"
   writeToLog $ "At end of turn, " ++ agentId me ++ "'s stats: "
     ++ pretty stats
   let modifiedAgents = me6:weanlings ++ others
   writeToLog $ "Modified agents: " ++ show (map agentId modifiedAgents)
-  updateStats stats Config.statsFile
+  updateStats stats (C.statsFile C.config)
   return modifiedAgents
 run _ = error "no more wains"
 
@@ -191,7 +193,7 @@ randomlyInsertImages xs = do
   insert <- randomIO
   if insert
     then do
-      (img, imageId) <- evalStateT anyImage Config.imageDB
+      (img, imageId) <- evalStateT anyImage (C.imageDB C.config)
       n <- randomRIO (0, 1)
       let (fore, aft) = splitAt n xs
       randomlyInsertImages $ fore ++ IObject img imageId : aft
@@ -264,7 +266,7 @@ disagree ((a:b:cs), r) dObj aLabel bLabel = do
     ++ ", says that " ++ dObjId ++ " has label "
     ++ show bLabel
   a' <- teachLabel dObjApp bLabel
-          . adjustEnergy Config.cooperationEnergyDelta $ a
+          . adjustEnergy (C.cooperationEnergyDelta C.config) $ a
   b' <- teachLabel dObjApp aLabel b
   return $ rewardCooperation (a':b':cs,r)
 disagree _ _ _ _ = error "Passed too few agents to disagree"
@@ -274,7 +276,7 @@ rewardCooperation (a:bs, r) = (a':bs, r')
   where a' = adjustEnergy deltaE a
         r' = r { coopEnergyDelta = coopEnergyDelta r + deltaE,
                  cooperateCount = cooperateCount r + 1}
-        deltaE = Config.cooperationEnergyDelta
+        deltaE = C.cooperationEnergyDelta C.config
 rewardCooperation _ = error "Passed too few agents to rewardCooperation"
 
 rewardAgreement :: ([Astronomer], Result) -> ([Astronomer], Result)
@@ -283,7 +285,7 @@ rewardAgreement (a:b:cs, r) = (a':b':cs, r')
         b' = adjustEnergy deltaE b
         r' = r { coopEnergyDelta = coopEnergyDelta r + deltaE,
                  agreeCount = agreeCount r + 1}
-        deltaE = Config.cooperationAgreementDelta
+        deltaE = C.cooperationAgreementDelta C.config
 rewardAgreement _ = error "Passed too few agents to rewardAgreement"
 
 flirt
@@ -304,7 +306,7 @@ rewardFlirtation (a, r) = (a', r')
   where a' = adjustEnergy deltaE a
         r' = r { flirtingEnergyDelta=flirtingEnergyDelta r + deltaE,
                  flirtCount=flirtCount r + 1}
-        deltaE = Config.flirtingEnergyDelta
+        deltaE = C.flirtingEnergyDelta C.config
 
 wean
   :: Universe u
@@ -316,7 +318,7 @@ wean (a, r) = do
 
 finishRound :: Universe u => StateT u IO ()
 finishRound = do
-  xs <- readStats Config.statsFile
+  xs <- readStats $ C.statsFile C.config
   summarise xs
-  clearStats Config.statsFile
+  clearStats $ C.statsFile C.config
 

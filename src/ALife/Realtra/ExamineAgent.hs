@@ -43,13 +43,14 @@ examine a = do
 
 main :: IO ()
 main = do
-  t <- evalStateT currentTime (Config.universe :: SimpleUniverse Astronomer)
+  t <- evalStateT currentTime
+        (Config.universe Config.config :: SimpleUniverse Astronomer)
   putStrLn $ "Universe time is " ++ show t
 
   args <- getArgs
   if null args
     then
-      evalStateT (getAndExamineAll) Config.universe
+      evalStateT (getAndExamineAll) (Config.universe Config.config)
     else do
       let s = head args
-      evalStateT (getAndExamine s) Config.universe
+      evalStateT (getAndExamine s) (Config.universe Config.config)

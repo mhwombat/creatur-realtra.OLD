@@ -24,7 +24,8 @@ import Control.Monad.Random.Class (getRandomR)
 import Control.Monad.State.Lazy (StateT, evalStateT)
 
 names :: [String]
-names = map (("Founder" ++) . show) [1..Config.initialPopulationSize]
+names = map (("Founder" ++) . show)
+          [1..(Config.initialPopulationSize Config.config)]
 
 introduceRandomAgent
   :: String
@@ -32,10 +33,12 @@ introduceRandomAgent
 introduceRandomAgent name = do
   classifierSize
     <- liftIO . evalRandIO $
-        getRandomR (1,Config.initialPopulationMaxClassifierSize)
+        getRandomR (1,
+          Config.initialPopulationMaxClassifierSize Config.config)
   deciderSize
     <- liftIO . evalRandIO $
-        getRandomR (1,Config.initialPopulationMaxDeciderSize)
+        getRandomR (1,
+          Config.initialPopulationMaxDeciderSize Config.config)
   agent
     <- liftIO $
         evalRandIO (randomAstronomer name classifierSize deciderSize)
@@ -53,5 +56,6 @@ introduceRandomAgents ns = do
 main :: IO ()
 main = do
   print names
-  evalStateT (introduceRandomAgents names) Config.universe
+  evalStateT (introduceRandomAgents names)
+    (Config.universe Config.config)
   
