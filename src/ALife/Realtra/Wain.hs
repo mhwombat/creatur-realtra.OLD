@@ -62,9 +62,10 @@ data Result = Result
     overpopulationEnergyDelta :: Double,
     discriminationEnergyDelta :: Double,
     childRearingEnergyDelta :: Double,
-    totalMetabEnergyDelta :: Double,
     coopEnergyDelta :: Double,
+    agreementEnergyDelta :: Double,
     flirtingEnergyDelta :: Double,
+    matingEnergyDelta :: Double,
     netEnergyDelta :: Double,
     birthCount :: Int,
     weanCount :: Int,
@@ -83,9 +84,10 @@ initResult = Result
     overpopulationEnergyDelta = 0,
     discriminationEnergyDelta = 0,
     childRearingEnergyDelta = 0,
-    totalMetabEnergyDelta = 0,
     coopEnergyDelta = 0,
+    agreementEnergyDelta = 0,
     flirtingEnergyDelta = 0,
+    matingEnergyDelta = 0,
     netEnergyDelta = 0,
     birthCount = 0,
     weanCount = 0,
@@ -104,9 +106,10 @@ resultStats r =
     Stats.dStat "discrimination Δe" (discriminationEnergyDelta r),
     Stats.dStat "pop Δe" (overpopulationEnergyDelta r),
     Stats.dStat "child rearing Δe" (childRearingEnergyDelta r),
-    Stats.dStat "metab Δe" (totalMetabEnergyDelta r),
     Stats.dStat "cooperation Δe" (coopEnergyDelta r),
+    Stats.dStat "agreement Δe" (agreementEnergyDelta r),
     Stats.dStat "flirting Δe" (flirtingEnergyDelta r),
+    Stats.dStat "mating Δe" (matingEnergyDelta r),
     Stats.dStat "net Δe" (netEnergyDelta r),
     Stats.iStat "bore" (birthCount r),
     Stats.iStat "weaned" (weanCount r),
@@ -125,8 +128,7 @@ runMetabolism (a, r) n = (a', r')
                  conflationEnergyDelta = confl,
                  discriminationEnergyDelta = disc,
                  overpopulationEnergyDelta = oed,
-                 childRearingEnergyDelta = cred,
-                 totalMetabEnergyDelta = deltaE
+                 childRearingEnergyDelta = cred
                }
         deltaE = sed + confl + disc + oed + cred
         sed = (C.energyDeltaPerByte C.config)
@@ -233,12 +235,11 @@ runAction Cooperate (a, r) _ _ _ = do
 --
 runAction Flirt (a, r) (AObject b) _ _ = do
   writeToLog $ agentId a ++ " looks for a mate"
-  flirt (a, r) b
+  flirt ([a,b], r)
 
 runAction Flirt (a, r) (IObject _ imgId) _ _ = do
   writeToLog $ agentId a ++ " flirted with image " ++ imgId
-  let (a', r') = rewardFlirtation (a, r)
-  return ([a'], r')
+  return $ rewardFlirtation ([a], r)
 
 --
 -- Ignore
@@ -280,7 +281,7 @@ disagree _ _ _ _ = error "Passed too few agents to disagree"
 rewardCooperation :: ([Astronomer], Result) -> ([Astronomer], Result)
 rewardCooperation (a:bs, r) = (a':bs, r')
   where a' = adjustEnergy deltaE a
-        r' = r { coopEnergyDelta = coopEnergyDelta r + deltaE,
+        r' = r { coopEnergyDelta = deltaE,
                  cooperateCount = cooperateCount r + 1}
         deltaE = C.cooperationEnergyDelta C.config
 rewardCooperation _ = error "Passed too few agents to rewardCooperation"
@@ -289,30 +290,40 @@ rewardAgreement :: ([Astronomer], Result) -> ([Astronomer], Result)
 rewardAgreement (a:b:cs, r) = (a':b':cs, r')
   where a' = adjustEnergy deltaE a
         b' = adjustEnergy deltaE b
-        r' = r { coopEnergyDelta = coopEnergyDelta r + deltaE,
+        r' = r { agreementEnergyDelta = deltaE,
                  agreeCount = agreeCount r + 1}
         deltaE = C.cooperationAgreementDelta C.config
 rewardAgreement _ = error "Passed too few agents to rewardAgreement"
 
 flirt
   :: Universe u
-    => (Astronomer, Result) -> Astronomer
-      -> StateT u IO ([Astronomer], Result)
-flirt (a, r) b = do
-  let (a', r') = rewardFlirtation (a, r)
-  (ws, mated) <- tryMating a' b
+    => ([Astronomer], Result) -> StateT u IO ([Astronomer], Result)
+flirt (ws, r) = do
+  let (a:b:others, r2) = rewardFlirtation (ws, r)
+  (ws', mated) <- tryMating a b
   if mated
-    then return (ws, r' { mateCount = mateCount r + 1,
-                          birthCount = birthCount r
-                            + (length . litter $ head ws) })
-    else return (ws, r')
+    then return . recordBirths $ rewardMating (ws', r2)
+    else return (ws' ++ others, r2)
 
-rewardFlirtation :: (Astronomer, Result) -> (Astronomer, Result)
-rewardFlirtation (a, r) = (a', r')
+recordBirths :: ([Astronomer], Result) -> ([Astronomer], Result)
+recordBirths (ws, r) = (ws, r')
+  where r' = r { birthCount=length . litter $ head ws }
+
+rewardFlirtation :: ([Astronomer], Result) -> ([Astronomer], Result)
+rewardFlirtation (a:others, r) = (a':others, r')
   where a' = adjustEnergy deltaE a
-        r' = r { flirtingEnergyDelta=flirtingEnergyDelta r + deltaE,
+        r' = r { flirtingEnergyDelta=deltaE,
                  flirtCount=flirtCount r + 1}
         deltaE = C.flirtingEnergyDelta C.config
+rewardFlirtation x = x
+
+rewardMating :: ([Astronomer], Result) -> ([Astronomer], Result)
+rewardMating (a:others, r) = (a':others, r')
+  where a' = adjustEnergy deltaE a
+        r' = r { matingEnergyDelta=deltaE,
+                 mateCount=mateCount r + 1}
+        deltaE = C.flirtingEnergyDelta C.config
+rewardMating x = x
 
 wean
   :: Universe u
@@ -327,4 +338,3 @@ finishRound = do
   xs <- readStats $ C.statsFile C.config
   summarise xs
   clearStats $ C.statsFile C.config
-

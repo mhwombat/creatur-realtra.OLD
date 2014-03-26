@@ -10,7 +10,7 @@ extractStats ()
   key=$1
   shift
   files=$*
-  cat ${files} | grep "${key}" | head -n 2 | tail -n 1 | sed 's/.*\tSummary - //; s/=[^,]*//g'
+  cat ${files} | grep "${key}" | tail -n 1 | sed 's/.*\tSummary - //; s/=[^,]*//g'
   cat ${files} | grep "${key}" | sed 's/.*\tSummary - //; s/^[^=]*=//; s/,[^=]*=/,/g'
 }
 

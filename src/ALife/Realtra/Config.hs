@@ -49,10 +49,10 @@ config = Config
     initialPopulationMaxDeciderSize = 5,
 
     -- The maximum age at which wains mature in the initial population.
-    initialPopulationMaxAgeOfMaturity = 200,
+    initialPopulationMaxAgeOfMaturity = 5,
 
     -- The size of the initial population.
-    initialPopulationSize = 10,
+    initialPopulationSize = 5,
 
     -- The maximum population size.
     -- As the population increases toward this limit, the metabolism
