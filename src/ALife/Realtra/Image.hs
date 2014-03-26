@@ -124,15 +124,6 @@ stripedImage w h = Image w h . map f $ indices w h
                 | otherwise     = 0
         halfWidth = round $ (fromIntegral w :: Double) / 2
 
--- stripedImage :: Int -> Int -> Image
--- stripedImage w h = Image w h . map f $ indices w h
---   where f (_,j,c) | j < thirdWidth                    && c == 0 = 255
---                   | j >= thirdWidth && j < 2*thirdWidth && c == 1 = 255
---                   | j >= 2*thirdWidth                  && c == 2 = 255
---                   |                                     c == 3 = 255
---                   | otherwise                                 = 0
---         thirdWidth = round $ (fromIntegral w :: Double) / 3
-
 readImage :: FilePath -> IO Image
 readImage filePath =
   I.runIL $ fmap arrayToImage $ I.readImage filePath

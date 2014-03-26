@@ -15,12 +15,13 @@ module Main where
 
 import ALife.Creatur.Universe (SimpleUniverse, agentIds, getAgent,
   currentTime)
-import ALife.Creatur.Wain (conflation)
+import ALife.Creatur.Wain
 import ALife.Realtra.Wain (Astronomer)
 import qualified ALife.Realtra.Config as Config
 import Control.Monad.State (StateT, evalStateT)
 import Control.Monad.IO.Class (liftIO)
 import System.Environment (getArgs)
+import Text.Printf (printf)
 
 getAndExamineAll
   :: StateT (SimpleUniverse Astronomer) IO ()
@@ -38,8 +39,18 @@ getAndExamine s = do
   
 examine :: Astronomer -> IO ()
 examine a = do
-  putStrLn $ show a
-  putStrLn $ "Conflation=" ++ show (conflation a)
+  putStrLn $ "name: " ++ show (name a)
+  -- appearance
+  -- brain
+  putStrLn $ "ageOfMaturity: " ++ show (ageOfMaturity a)
+  putStrLn $ "passionDelta: " ++ show (passionDelta a)
+  putStrLn $ "energy: " ++ printf "%5.3f" (energy a)
+  putStrLn $ "passion: " ++ printf "%5.3f" (passion a)
+  putStrLn $ "age: " ++ show (age a)
+  putStrLn $ "numberOfChildren: " ++ show (numberOfChildren a)
+  putStrLn $ "litter size: " ++ show (length $ litter a)
+  putStrLn $ "conflation=" ++ printf "%5.3f" (conflation a)
+  putStrLn $ "size: " ++ show (size a)
 
 main :: IO ()
 main = do

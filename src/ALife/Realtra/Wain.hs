@@ -17,14 +17,16 @@ module ALife.Realtra.Wain
     run,
     randomAstronomer,
     finishRound,
-    summarise
+    summarise,
+    energy,
+    passion
   ) where
 
 import ALife.Creatur (Agent, agentId)
 import ALife.Creatur.Universe (Universe, writeToLog, popSize)
 import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
   conflation, chooseAction, discrimination, randomWain, classify,
-  teachLabel, incAge, weanMatureChildren, tryMating)
+  teachLabel, incAge, weanMatureChildren, tryMating, energy, passion)
 import ALife.Creatur.Wain.Pretty (pretty)
 import qualified ALife.Creatur.Wain.Statistics as Stats
 import ALife.Realtra.Action (Action(..))
