@@ -65,6 +65,7 @@ data Result = Result
     totalMetabEnergyDelta :: Double,
     coopEnergyDelta :: Double,
     flirtingEnergyDelta :: Double,
+    netEnergyDelta :: Double,
     birthCount :: Int,
     weanCount :: Int,
     cooperateCount :: Int,
@@ -85,6 +86,7 @@ initResult = Result
     totalMetabEnergyDelta = 0,
     coopEnergyDelta = 0,
     flirtingEnergyDelta = 0,
+    netEnergyDelta = 0,
     birthCount = 0,
     weanCount = 0,
     cooperateCount = 0,
@@ -105,6 +107,7 @@ resultStats r =
     Stats.dStat "metab Δe" (totalMetabEnergyDelta r),
     Stats.dStat "cooperation Δe" (coopEnergyDelta r),
     Stats.dStat "flirting Δe" (flirtingEnergyDelta r),
+    Stats.dStat "net Δe" (netEnergyDelta r),
     Stats.iStat "bore" (birthCount r),
     Stats.iStat "weaned" (weanCount r),
     Stats.iStat "co-operated" (cooperateCount r),
@@ -161,7 +164,8 @@ run (me:xs) = do
   (me4:others, r4) <- runAction action (me3, r) x y imgLabel
   me5 <- incAge me4
   (me6:weanlings, r6) <- wean (me5, r4)
-  let stats = Stats.stats me6 ++ resultStats r6
+  let r7 = r6 { netEnergyDelta = energy me6 - energy me}
+  let stats = Stats.stats me6 ++ resultStats r7
   writeToLog $ "End of " ++ agentId me ++ "'s turn"
   writeToLog $ "At end of turn, " ++ agentId me ++ "'s stats: "
     ++ pretty stats

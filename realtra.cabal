@@ -1,5 +1,5 @@
 name:                creatur-realtra
-version:             1.0.1
+version:             1.0.2
 synopsis:            Agent for categorising images.
 description:         Experiment in analysing Galaxy Zoo data.
 homepage:            https://github.com/mhwombat/realtra
