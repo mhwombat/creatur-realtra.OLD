@@ -61,7 +61,7 @@ config = Config
     -- Note: It's unlikely the population will actually reach this limit
     -- (because the metabolism costs will be so high), so set this value
     -- a bit higher than your desired maximum population.
-    maxPopulationSize = 300,
+    maxPopulationSize = 50,
 
     -- The maximum number of categories for classification
     -- Note: It's unlikely the wains will actually reach this limit
