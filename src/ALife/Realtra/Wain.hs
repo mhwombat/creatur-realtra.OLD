@@ -44,7 +44,7 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Random (Rand, RandomGen)
 import Control.Monad.State.Lazy (StateT, evalStateT)
 import Data.Word (Word8)
-import Factory.Math.Statistics (getStandardDeviation)
+-- import Factory.Math.Statistics (getStandardDeviation)
 import Math.Geometry.GridMap (elems)
 import System.Random (randomIO, randomRIO)
 
@@ -150,8 +150,8 @@ schemaQuality :: Astronomer -> Double
 schemaQuality = schemaQuality' . elems . counterMap . classifier . brain
 
 schemaQuality' :: Integral a => [a] -> Double
-schemaQuality' xs = n/xMax
-  where n = min xMax . fromIntegral $ categoriesReallyUsed' xs
+schemaQuality' xs = min 1 (n/xMax)
+  where n = fromIntegral $ categoriesReallyUsed' xs
         xMax = fromIntegral $ C.maxCategories C.config
 -- schemaQuality' xs = y*y
 --   where y = 2*(x - 0.5)
@@ -165,11 +165,11 @@ categoriesReallyUsed
   = categoriesReallyUsed' . elems . counterMap . classifier . brain
 
 categoriesReallyUsed' :: Integral a => [a] -> Int
-categoriesReallyUsed' xs = length $ filter (>s) xs'
-  where s = getStandardDeviation xs'
-        xs' = map fromIntegral xs :: [Double]
--- categoriesReallyUsed' xs = length $ filter (>k) xs
---   where k = (sum xs) `div` (fromIntegral $ C.maxCategories C.config)
+-- categoriesReallyUsed' xs = length $ filter (>(s/4)) xs'
+--   where s = getStandardDeviation xs'
+--         xs' = map fromIntegral xs :: [Double]
+categoriesReallyUsed' xs = length $ filter (>k) xs
+  where k = (sum xs) `div` (fromIntegral $ C.maxCategories C.config)
 
 childRearingCost :: Astronomer -> Double
 childRearingCost a = x * (sum . map f $ litter a)

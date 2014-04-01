@@ -73,7 +73,7 @@ config = Config
     -- Note: It's unlikely the wains will actually this limit
     -- (because the metabolism costs will be so high), so set this value
     -- a bit higher than your desired maximum.
-    maxCategories = 12,
+    maxCategories = 50,
 
     -- The maximum agent size to allow.
     -- Most of an agent's size is taken up by its brain, so the agent's size
