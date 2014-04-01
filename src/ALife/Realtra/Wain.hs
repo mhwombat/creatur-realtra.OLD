@@ -64,9 +64,8 @@ randomAstronomer wainName classifierSize deciderSize = do
 data Result = Result
   {
     sizeEnergyDelta :: Double,
-    crowdingEnergyDelta :: Double,
-    classificationEnergyDelta :: Double,
     childRearingEnergyDelta :: Double,
+    foragingEnergyDelta :: Double,
     coopEnergyDelta :: Double,
     agreementEnergyDelta :: Double,
     flirtingEnergyDelta :: Double,
@@ -85,9 +84,8 @@ initResult :: Result
 initResult = Result
   {
     sizeEnergyDelta = 0,
-    crowdingEnergyDelta = 0,
-    classificationEnergyDelta = 0,
     childRearingEnergyDelta = 0,
+    foragingEnergyDelta = 0,
     coopEnergyDelta = 0,
     agreementEnergyDelta = 0,
     flirtingEnergyDelta = 0,
@@ -106,9 +104,8 @@ resultStats :: Result -> [Stats.Statistic]
 resultStats r =
   [
     Stats.uiStat "size Δe" (sizeEnergyDelta r),
-    Stats.uiStat "pop Δe" (crowdingEnergyDelta r),
-    Stats.uiStat "cat Δe" (classificationEnergyDelta r),
     Stats.uiStat "child rearing Δe" (childRearingEnergyDelta r),
+    Stats.uiStat "foraging Δe" (foragingEnergyDelta r),
     Stats.uiStat "cooperation Δe" (coopEnergyDelta r),
     Stats.uiStat "agreement Δe" (agreementEnergyDelta r),
     Stats.uiStat "flirting Δe" (flirtingEnergyDelta r),
@@ -123,17 +120,15 @@ resultStats r =
     Stats.iStat "ignored" (ignoreCount r)
   ]
 
-runMetabolism ::  (Astronomer, Result) -> Int -> (Astronomer, Result)
-runMetabolism (a, r) n = (a', r')
+runMetabolism :: (Astronomer, Result) -> (Astronomer, Result)
+runMetabolism (a, r) = (a', r')
   where a' = adjustPassion $ adjustEnergy deltaE a
         r' = r {
                  sizeEnergyDelta = sc,
-                 crowdingEnergyDelta = cc,
                  childRearingEnergyDelta = crc
                }
-        deltaE = sc + cc + crc
+        deltaE = sc + crc
         sc = sizeCost a
-        cc = crowdingCost n
         crc = childRearingCost a
 
 sizeCost :: Astronomer -> Double
@@ -141,8 +136,14 @@ sizeCost a = - (s/m)*(s/m)
   where s = fromIntegral (size a)
         m = fromIntegral (C.maxSize C.config)
 
-crowdingCost :: Int -> Double
-crowdingCost n = - (n'/m)*(n'/m)
+forage :: Int -> (Astronomer, Result) -> (Astronomer, Result)
+forage n (a, r) = (a', r')
+  where a' = adjustEnergy deltaE a
+        r' = r { foragingEnergyDelta = deltaE }
+        deltaE = foragingReward n
+
+foragingReward :: Int -> Double
+foragingReward n = max 0 $ (1 - n'/m)*(C.foragingMaxEnergyDelta C.config)
   where n' = fromIntegral n
         m = fromIntegral (C.maxPopulation C.config)
 
@@ -187,7 +188,7 @@ run (me:xs) = do
     ++ pretty (Stats.stats me)
   k <- popSize
   writeToLog $ "DEBUG pop size=" ++ show k
-  let (me2, r) = runMetabolism (me, initResult) k
+  let (me2, r) = forage k $ runMetabolism (me, initResult)
   writeToLog $ "DEBUG metabolism finished"
   (x, y) <- chooseObjects xs
   writeToLog $ agentId me ++ " sees " ++ objectId x
@@ -195,8 +196,8 @@ run (me:xs) = do
   (imgLabel, action, me3)
     <- chooseAction (objectAppearance x) (objectAppearance y) me2
   writeToLog $ agentId me ++ " sees " ++ objectId x ++ ", labels it "
-    ++ show imgLabel ++ ", and chooses to " ++ show action
-    ++ " with " ++ objectId y
+    ++ show imgLabel ++ ", and chooses to "
+    ++ describe (objectId x) (objectId y) action
   (me4:others, r4) <- runAction action (me3, r) x y imgLabel
   me5 <- incAge me4
   (me6:weanlings, r6) <- wean (me5, r4)
@@ -210,6 +211,11 @@ run (me:xs) = do
   updateStats stats (C.statsFile C.config)
   return modifiedAgents
 run _ = error "no more wains"
+
+describe :: String -> String -> Action -> String
+describe _ iObj Cooperate = "share that classification with " ++ iObj
+describe _ _    Flirt = "flirt"
+describe _ _    Ignore = "do nothing"
 
 chooseObjects
   :: Universe u

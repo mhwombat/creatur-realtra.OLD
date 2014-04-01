@@ -27,7 +27,7 @@ config = Config
 
     -- Number of microseconds to sleep after each agent gets its turn
     -- at the CPU.
-    sleepBetweenTasks = 100,
+    sleepBetweenTasks = 200,
 
     imageDB = mkImageDB "/home/amy/GalaxyZoo/table2/tiny-images",
 
@@ -52,7 +52,7 @@ config = Config
     initialPopulationMaxAgeOfMaturity = 5,
 
     -- The size of the initial population.
-    initialPopulationSize = 5,
+    initialPopulationSize = 4,
 
     -- The maximum population size.
     -- As the population increases toward this limit, the metabolism
@@ -61,7 +61,7 @@ config = Config
     -- Note: It's unlikely the population will actually reach this limit
     -- (because the metabolism costs will be so high), so set this value
     -- a bit higher than your desired maximum population.
-    maxPopulation = 50,
+    maxPopulation = 6,
 
     -- The minimum number of categories /actually used/.
     -- Note: It's unlikely the wains will actually this limit
@@ -95,6 +95,14 @@ config = Config
     --
     -- Rewards and penalties
     --
+
+    -- Each time an agent gets a CPU turn, it can forage for extra
+    -- energy. The amount it gets depends on the current population
+    -- size. More agents leads to overcrowding, which means less
+    -- energy to forage. The value below represents the maximum
+    -- energy that can be foraged in a turn.
+    -- This is normally an energy GAIN, so it should be positive.
+    foragingMaxEnergyDelta = 0.1,
 
     -- TODO MAKE CODE CONSISTENT WITH WHAT I WROTE IN THE THESIS.
 
@@ -142,6 +150,7 @@ data Config a = Config
     initialPopulationMaxAgeOfMaturity :: Word16,
     initialPopulationSize :: Int,
     childCostFactor :: Double,
+    foragingMaxEnergyDelta :: Double,
     maxPopulation :: Int,
     minCategories :: Int,
     maxCategories :: Int,
