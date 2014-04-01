@@ -19,14 +19,18 @@ module ALife.Realtra.Wain
     finishRound,
     summarise,
     energy,
-    passion
+    passion,
+    schemaQuality,
+    categoriesReallyUsed
   ) where
 
 import ALife.Creatur (Agent, agentId)
 import ALife.Creatur.Universe (Universe, writeToLog, popSize)
 import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
-  conflation, chooseAction, discrimination, randomWain, classify,
-  teachLabel, incAge, weanMatureChildren, tryMating, energy, passion)
+  chooseAction, randomWain, classify, teachLabel, incAge,
+  weanMatureChildren, tryMating, energy, passion)
+import ALife.Creatur.Wain.Brain (classifier)
+import ALife.Creatur.Wain.GeneticSOM (counterMap)
 import ALife.Creatur.Wain.Pretty (pretty)
 import qualified ALife.Creatur.Wain.Statistics as Stats
 import ALife.Realtra.Action (Action(..))
@@ -40,6 +44,8 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Random (Rand, RandomGen)
 import Control.Monad.State.Lazy (StateT, evalStateT)
 import Data.Word (Word8)
+import Factory.Math.Statistics (getStandardDeviation)
+import Math.Geometry.GridMap (elems)
 import System.Random (randomIO, randomRIO)
 
 type Astronomer = Wain Image Action
@@ -58,9 +64,8 @@ randomAstronomer wainName classifierSize deciderSize = do
 data Result = Result
   {
     sizeEnergyDelta :: Double,
-    conflationEnergyDelta :: Double,
-    overpopulationEnergyDelta :: Double,
-    discriminationEnergyDelta :: Double,
+    crowdingEnergyDelta :: Double,
+    classificationEnergyDelta :: Double,
     childRearingEnergyDelta :: Double,
     coopEnergyDelta :: Double,
     agreementEnergyDelta :: Double,
@@ -80,9 +85,8 @@ initResult :: Result
 initResult = Result
   {
     sizeEnergyDelta = 0,
-    conflationEnergyDelta = 0,
-    overpopulationEnergyDelta = 0,
-    discriminationEnergyDelta = 0,
+    crowdingEnergyDelta = 0,
+    classificationEnergyDelta = 0,
     childRearingEnergyDelta = 0,
     coopEnergyDelta = 0,
     agreementEnergyDelta = 0,
@@ -102,9 +106,8 @@ resultStats :: Result -> [Stats.Statistic]
 resultStats r =
   [
     Stats.uiStat "size Δe" (sizeEnergyDelta r),
-    Stats.uiStat "conflation Δe" (conflationEnergyDelta r),
-    Stats.uiStat "discrimination Δe" (discriminationEnergyDelta r),
-    Stats.uiStat "pop Δe" (overpopulationEnergyDelta r),
+    Stats.uiStat "pop Δe" (crowdingEnergyDelta r),
+    Stats.uiStat "cat Δe" (classificationEnergyDelta r),
     Stats.uiStat "child rearing Δe" (childRearingEnergyDelta r),
     Stats.uiStat "cooperation Δe" (coopEnergyDelta r),
     Stats.uiStat "agreement Δe" (agreementEnergyDelta r),
@@ -124,24 +127,55 @@ runMetabolism ::  (Astronomer, Result) -> Int -> (Astronomer, Result)
 runMetabolism (a, r) n = (a', r')
   where a' = adjustPassion $ adjustEnergy deltaE a
         r' = r {
-                 sizeEnergyDelta = sed,
-                 conflationEnergyDelta = confl,
-                 discriminationEnergyDelta = disc,
-                 overpopulationEnergyDelta = oed,
-                 childRearingEnergyDelta = cred
+                 sizeEnergyDelta = sc,
+                 crowdingEnergyDelta = cc,
+                 childRearingEnergyDelta = crc
                }
-        deltaE = sed + confl + disc + oed + cred
-        sed = (C.energyDeltaPerByte C.config)
-                       * fromIntegral (size a)
-        confl = (C.conflationEnergyDeltaFactor C.config) * (conflation a)
-        disc = d*d
-        d = 1 - (discrimination a (C.maxCategories C.config))
-        oed = - (min 1 (overpopulationFactor ^ (16::Int)))
-        cred = (fromIntegral . length $ litter a)
-                   * (C.childRearingEnergyDelta C.config)
-        overpopulationFactor
-          = fromIntegral n / fromIntegral (C.maxPopulationSize C.config)
+        deltaE = sc + cc + crc
+        sc = sizeCost a
+        cc = crowdingCost n
+        crc = childRearingCost a
 
+sizeCost :: Astronomer -> Double
+sizeCost a = - (s/m)*(s/m)
+  where s = fromIntegral (size a)
+        m = fromIntegral (C.maxSize C.config)
+
+crowdingCost :: Int -> Double
+crowdingCost n = - (n'/m)*(n'/m)
+  where n' = fromIntegral n
+        m = fromIntegral (C.maxPopulation C.config)
+
+schemaQuality :: Astronomer -> Double
+schemaQuality = schemaQuality' . elems . counterMap . classifier . brain
+
+schemaQuality' :: Integral a => [a] -> Double
+schemaQuality' xs = n/xMax
+  where n = min xMax . fromIntegral $ categoriesReallyUsed' xs
+        xMax = fromIntegral $ C.maxCategories C.config
+-- schemaQuality' xs = y*y
+--   where y = 2*(x - 0.5)
+--         x = (n - xMin)/(xMax - xMin)
+--         n = min xMax . fromIntegral $ categoriesReallyUsed' xs
+--         xMin = fromIntegral $ C.minCategories C.config
+--         xMax = fromIntegral $ C.maxCategories C.config
+
+categoriesReallyUsed :: Astronomer -> Int
+categoriesReallyUsed
+  = categoriesReallyUsed' . elems . counterMap . classifier . brain
+
+categoriesReallyUsed' :: Integral a => [a] -> Int
+categoriesReallyUsed' xs = length $ filter (>s) xs'
+  where s = getStandardDeviation xs'
+        xs' = map fromIntegral xs :: [Double]
+-- categoriesReallyUsed' xs = length $ filter (>k) xs
+--   where k = (sum xs) `div` (fromIntegral $ C.maxCategories C.config)
+
+childRearingCost :: Astronomer -> Double
+childRearingCost a = x * (sum . map f $ litter a)
+    where x = C.childCostFactor C.config
+          f c = sizeCost c
+          
 run
   :: Universe u
     => [Astronomer] -> StateT u IO [Astronomer]
@@ -292,7 +326,8 @@ rewardAgreement (a:b:cs, r) = (a':b':cs, r')
         b' = adjustEnergy deltaE b
         r' = r { agreementEnergyDelta = deltaE,
                  agreeCount = agreeCount r + 1}
-        deltaE = C.cooperationAgreementDelta C.config
+        deltaE = (schemaQuality a)
+                   *(C.cooperationAgreementDelta C.config)
 rewardAgreement _ = error "Passed too few agents to rewardAgreement"
 
 flirt

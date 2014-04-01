@@ -16,10 +16,14 @@ module Main where
 import ALife.Creatur.Universe (SimpleUniverse, agentIds, getAgent,
   currentTime)
 import ALife.Creatur.Wain
-import ALife.Realtra.Wain (Astronomer)
+import ALife.Realtra.Wain (Astronomer, schemaQuality,
+  categoriesReallyUsed)
+import ALife.Creatur.Wain.Brain (classifier)
+import ALife.Creatur.Wain.GeneticSOM (counterMap)
 import qualified ALife.Realtra.Config as Config
 import Control.Monad.State (StateT, evalStateT)
 import Control.Monad.IO.Class (liftIO)
+import Math.Geometry.GridMap (elems)
 import System.Environment (getArgs)
 import Text.Printf (printf)
 
@@ -49,7 +53,9 @@ examine a = do
   putStrLn $ "age: " ++ show (age a)
   putStrLn $ "numberOfChildren: " ++ show (numberOfChildren a)
   putStrLn $ "litter size: " ++ show (length $ litter a)
-  putStrLn $ "conflation=" ++ printf "%5.3f" (conflation a)
+  putStrLn $ "counts=" ++ show (elems . counterMap . classifier $ brain a)
+  putStrLn $ "schema quality=" ++  printf "%5.3f" (schemaQuality a)
+  putStrLn $ "categories really used=" ++ show (categoriesReallyUsed a)
   putStrLn $ "size: " ++ show (size a)
 
 main :: IO ()
