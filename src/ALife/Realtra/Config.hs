@@ -83,6 +83,8 @@ config = Config
     -- a bit higher than your desired maximum.
     maxSize = 500000,
 
+    baseMetabolismCost = 0.1,
+    
     --
     -- A wain rearing a child pays a fraction of the metabolic cost
     -- that the child would pay if it were full-grown. It's only a
@@ -149,6 +151,7 @@ data Config a = Config
     initialPopulationMaxDeciderSize :: Word8,
     initialPopulationMaxAgeOfMaturity :: Word16,
     initialPopulationSize :: Int,
+    baseMetabolismCost :: Double,
     childCostFactor :: Double,
     foragingMaxEnergyDelta :: Double,
     maxPopulation :: Int,

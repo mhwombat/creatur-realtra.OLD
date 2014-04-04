@@ -132,9 +132,10 @@ runMetabolism (a, r) = (a', r')
         crc = childRearingCost a
 
 sizeCost :: Astronomer -> Double
-sizeCost a = - (s/m)*(s/m)
+sizeCost a = -(b + s/m)
   where s = fromIntegral (size a)
         m = fromIntegral (C.maxSize C.config)
+        b = C.baseMetabolismCost C.config
 
 forage :: Int -> (Astronomer, Result) -> (Astronomer, Result)
 forage n (a, r) = (a', r')
