@@ -300,7 +300,7 @@ agree x@((a:b:_), _) dObj label = do
   let dObjId = objectId dObj
   writeToLog $ agentId b ++ " agrees with " ++  agentId a
     ++ " that " ++ dObjId ++ " has label " ++ show label
-  return . rewardCooperation $ rewardAgreement x
+  return . rewardCooperation $ rewardAgreement x dObj
 agree _ _ _ = error "Passed too few agents to agree"
 
 disagree
@@ -327,15 +327,17 @@ rewardCooperation (a:bs, r) = (a':bs, r')
         deltaE = C.cooperationEnergyDelta C.config
 rewardCooperation _ = error "Passed too few agents to rewardCooperation"
 
-rewardAgreement :: ([Astronomer], Result) -> ([Astronomer], Result)
-rewardAgreement (a:b:cs, r) = (a':b':cs, r')
+rewardAgreement :: ([Astronomer], Result) -> Object -> ([Astronomer], Result)
+rewardAgreement (a:b:cs, r) dObj = (a':b':cs, r')
   where a' = adjustEnergy deltaE a
         b' = adjustEnergy deltaE b
         r' = r { agreementEnergyDelta = deltaE,
                  agreeCount = agreeCount r + 1}
         deltaE = (schemaQuality a)
-                   *(C.cooperationAgreementDelta C.config)
-rewardAgreement _ = error "Passed too few agents to rewardAgreement"
+                   *(f dObj)
+        f (AObject _) = C.cooperationObjectAgreementDelta C.config
+        f (IObject _ _) = C.cooperationImageAgreementDelta C.config
+rewardAgreement _ _ = error "Passed too few agents to rewardAgreement"
 
 flirt
   :: Universe u

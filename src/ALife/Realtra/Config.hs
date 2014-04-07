@@ -137,7 +137,13 @@ config = Config
     -- energy changes by this amount, multiplied by the quality of
     -- the overall classification schema.
     -- This is normally an energy GAIN, so it should be positive.
-    cooperationAgreementDelta = 1.0
+    cooperationObjectAgreementDelta = 1.0,
+
+    -- When two agents co-operate, and agree on a classification, their
+    -- energy changes by this amount, multiplied by the quality of
+    -- the overall classification schema.
+    -- This is normally an energy GAIN, so it should be positive.
+    cooperationImageAgreementDelta = 0.01
   }
 
 data Config a = Config
@@ -161,6 +167,7 @@ data Config a = Config
     flirtingEnergyDelta :: Double,
     matingEnergyDelta :: Double,
     cooperationEnergyDelta :: Double,
-    cooperationAgreementDelta :: Double
+    cooperationObjectAgreementDelta :: Double,
+    cooperationImageAgreementDelta :: Double
   } deriving (Show, Eq)
 
