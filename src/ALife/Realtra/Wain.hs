@@ -188,9 +188,8 @@ run (me:xs) = do
   writeToLog $ "At beginning of turn, " ++ agentId me ++ "'s stats: "
     ++ pretty (Stats.stats me)
   k <- popSize
-  writeToLog $ "DEBUG pop size=" ++ show k
+  writeToLog $ "Pop. size=" ++ show k
   let (me2, r) = forage k $ runMetabolism (me, initResult)
-  writeToLog $ "DEBUG metabolism finished"
   (x, y) <- chooseObjects xs
   writeToLog $ agentId me ++ " sees " ++ objectId x
     ++ " and " ++ objectId y
