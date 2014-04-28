@@ -10,24 +10,27 @@
 -- Configuration parameters.
 --
 ------------------------------------------------------------------------
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
 module ALife.Realtra.Config where
 
-import ALife.Creatur.Universe (mkSimpleUniverse, SimpleUniverse)
-import ALife.Realtra.ImageDB (ImageDB, mkImageDB)
-import Data.Word (Word8, Word16)
+import ALife.Creatur.Universe (mkCachedUniverse)
+import ALife.Realtra.ImageDB (mkImageDB)
+import ALife.Realtra.Wain (Config(..))
 
-config :: Config a
+onServer :: Bool
+onServer = False
+
+config :: Config
 config = Config
   {
     universe
-      = mkSimpleUniverse "GalaxyZoo" "/home/amy/alife/gzoo1" 100000,
+      = mkCachedUniverse "GalaxyZoo" "/home/amy/alife/gzoo1" 100000 20000000,
 
     statsFile = "/home/amy/alife/gzoo1/stats",
 
     -- Number of microseconds to sleep after each agent gets its turn
     -- at the CPU.
-    sleepBetweenTasks = 200,
+    sleepBetweenTasks = 0,
 
     imageDB = mkImageDB "/home/amy/GalaxyZoo/table2/tiny-images",
 
@@ -49,10 +52,10 @@ config = Config
     initialPopulationMaxDeciderSize = 5,
 
     -- The maximum age at which wains mature in the initial population.
-    initialPopulationMaxAgeOfMaturity = 5,
+    initialPopulationMaxAgeOfMaturity = if onServer then 100 else 2,
 
     -- The size of the initial population.
-    initialPopulationSize = 4,
+    initialPopulationSize = if onServer then 200 else 3,
 
     -- The maximum population size.
     -- As the population increases toward this limit, the metabolism
@@ -61,13 +64,13 @@ config = Config
     -- Note: It's unlikely the population will actually reach this limit
     -- (because the metabolism costs will be so high), so set this value
     -- a bit higher than your desired maximum population.
-    maxPopulation = 6,
+    maxPopulationSize = if onServer then 500 else 10,
 
-    -- The minimum number of categories /actually used/.
-    -- Note: It's unlikely the wains will actually this limit
-    -- (because the metabolism costs will be so high), so set this value
-    -- a bit lower than your desired minimum.
-    minCategories = 2, -- really want at least 4
+    -- -- The minimum number of categories /actually used/.
+    -- -- Note: It's unlikely the wains will actually this limit
+    -- -- (because the metabolism costs will be so high), so set this value
+    -- -- a bit lower than your desired minimum.
+    -- minCategories = 2, -- really want at least 4
 
     -- The maximum number of categories /actually used/.
     -- Note: It's unlikely the wains will actually this limit
@@ -93,18 +96,15 @@ config = Config
     -- cost of raising it would be small).
     --
     childCostFactor = 0.2,
+
+    --
+    -- This must be an ODD integer >= 1
+    --
+    foragingIndex = 3,
     
     --
     -- Rewards and penalties
     --
-
-    -- Each time an agent gets a CPU turn, it can forage for extra
-    -- energy. The amount it gets depends on the current population
-    -- size. More agents leads to overcrowding, which means less
-    -- energy to forage. The value below represents the maximum
-    -- energy that can be foraged in a turn.
-    -- This is normally an energy GAIN, so it should be positive.
-    foragingMaxEnergyDelta = 0.1,
 
     -- TODO MAKE CODE CONSISTENT WITH WHAT I WROTE IN THE THESIS.
 
@@ -112,7 +112,7 @@ config = Config
 
     -- Every time an agent flirts, its energy changes by a fixed amount.
     -- This is normally an energy LOSS, so it should be negative.
-    flirtingEnergyDelta = -0.01,
+    flirtingDeltaE = -0.01,
 
     -- Also see passionDelta
 
@@ -122,7 +122,7 @@ config = Config
 
     -- Every time an agent mates, its energy changes by a fixed amount.
     -- This is normally an energy LOSS, so it should be negative.
-    matingEnergyDelta = -0.01,
+    matingDeltaE = -0.01,
 
     -- Note: Passion is reset to zero after mating.
 
@@ -131,13 +131,13 @@ config = Config
     -- When an agent initiates co-operation (trading classifications), its
     -- energy changes by a fixed amount.
     -- This is normally an energy LOSS, so it should be negative.
-    cooperationEnergyDelta = -0.01,
+    cooperationDeltaE = -0.01,
 
     -- When two agents co-operate, and agree on a classification, their
     -- energy changes by this amount, multiplied by the quality of
     -- the overall classification schema.
     -- This is normally an energy GAIN, so it should be positive.
-    cooperationObjectAgreementDelta = 1.0,
+    cooperationAgentAgreementDelta = 1.0,
 
     -- When two agents co-operate, and agree on a classification, their
     -- energy changes by this amount, multiplied by the quality of
@@ -146,28 +146,4 @@ config = Config
     cooperationImageAgreementDelta = 0.01
   }
 
-data Config a = Config
-  { universe :: SimpleUniverse a,
-    statsFile :: FilePath,
-    sleepBetweenTasks :: Int,
-    imageDB :: ImageDB,
-    imageHeight :: Int,
-    imageWidth :: Int,
-    initialPopulationMaxClassifierSize :: Word8,
-    initialPopulationMaxDeciderSize :: Word8,
-    initialPopulationMaxAgeOfMaturity :: Word16,
-    initialPopulationSize :: Int,
-    baseMetabolismCost :: Double,
-    childCostFactor :: Double,
-    foragingMaxEnergyDelta :: Double,
-    maxPopulation :: Int,
-    minCategories :: Int,
-    maxCategories :: Int,
-    maxSize :: Int,
-    flirtingEnergyDelta :: Double,
-    matingEnergyDelta :: Double,
-    cooperationEnergyDelta :: Double,
-    cooperationObjectAgreementDelta :: Double,
-    cooperationImageAgreementDelta :: Double
-  } deriving (Show, Eq)
 

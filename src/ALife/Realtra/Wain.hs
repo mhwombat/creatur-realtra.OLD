@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- |
 -- Module      :  ALife.Realtra.Wain
--- Copyright   :  (c) Amy de Buitléir 2012-2013
+-- Copyright   :  (c) Amy de Buitléir 2012-2014
 -- License     :  BSD-style
 -- Maintainer  :  amy@nualeargais.ie
 -- Stability   :  experimental
@@ -10,9 +10,11 @@
 -- A data mining agent, designed for the Créatúr framework.
 --
 ------------------------------------------------------------------------
-{-# LANGUAGE TypeFamilies, FlexibleContexts, ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies, FlexibleContexts, ScopedTypeVariables,
+    TemplateHaskell, Rank2Types #-}
 module ALife.Realtra.Wain
   (
+    Config(..),
     Astronomer,
     run,
     randomAstronomer,
@@ -24,209 +26,38 @@ module ALife.Realtra.Wain
     categoriesReallyUsed
   ) where
 
-import ALife.Creatur (Agent, agentId)
-import ALife.Creatur.Universe (Universe, writeToLog, popSize)
+import ALife.Creatur (agentId)
+import ALife.Creatur.Database (size)
+import ALife.Creatur.Universe (CachedUniverse, writeToLog, popSize)
+import ALife.Creatur.Util (stateMap)
 import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
   chooseAction, randomWain, classify, teachLabel, incAge,
-  weanMatureChildren, tryMating, energy, passion)
+  weanMatureChildren, tryMating, energy, passion, hasLitter)
 import ALife.Creatur.Wain.Brain (classifier)
 import ALife.Creatur.Wain.GeneticSOM (counterMap)
 import ALife.Creatur.Wain.Pretty (pretty)
 import qualified ALife.Creatur.Wain.Statistics as Stats
 import ALife.Realtra.Action (Action(..))
-import qualified ALife.Realtra.Config as C
 import ALife.Creatur.Wain.PersistentStatistics (updateStats, readStats,
   clearStats, summarise)
 import ALife.Realtra.Image (Image, stripedImage, randomImage)
-import ALife.Realtra.ImageDB (anyImage)
+import ALife.Realtra.ImageDB (ImageDB, anyImage)
+import Control.Lens hiding (Action, universe)
 import Control.Monad (replicateM, when)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Random (Rand, RandomGen)
-import Control.Monad.State.Lazy (StateT, evalStateT)
-import Data.Word (Word8)
+import Control.Monad.State.Lazy (StateT, execStateT, evalStateT, get)
+import Data.Word (Word8, Word16)
 -- import Factory.Math.Statistics (getStandardDeviation)
 import Math.Geometry.GridMap (elems)
 import System.Random (randomIO, randomRIO)
-
-type Astronomer = Wain Image Action
-
-randomAstronomer
-  :: RandomGen r => String -> Word8 -> Word8 -> Rand r Astronomer
-randomAstronomer wainName classifierSize deciderSize = do
-  let n = fromIntegral $ 3*classifierSize*classifierSize
-  let w = C.imageWidth C.config
-  let h = C.imageHeight C.config
-  let app = stripedImage w h
-  imgs <- replicateM n (randomImage w h)
-  randomWain wainName app classifierSize imgs deciderSize
-    (C.initialPopulationMaxAgeOfMaturity C.config)
-
-data Result = Result
-  {
-    sizeEnergyDelta :: Double,
-    childRearingEnergyDelta :: Double,
-    foragingEnergyDelta :: Double,
-    coopEnergyDelta :: Double,
-    agreementEnergyDelta :: Double,
-    flirtingEnergyDelta :: Double,
-    matingEnergyDelta :: Double,
-    netEnergyDelta :: Double,
-    birthCount :: Int,
-    weanCount :: Int,
-    cooperateCount :: Int,
-    agreeCount :: Int,
-    flirtCount :: Int,
-    mateCount :: Int,
-    ignoreCount :: Int
-  }
-
-initResult :: Result
-initResult = Result
-  {
-    sizeEnergyDelta = 0,
-    childRearingEnergyDelta = 0,
-    foragingEnergyDelta = 0,
-    coopEnergyDelta = 0,
-    agreementEnergyDelta = 0,
-    flirtingEnergyDelta = 0,
-    matingEnergyDelta = 0,
-    netEnergyDelta = 0,
-    birthCount = 0,
-    weanCount = 0,
-    cooperateCount = 0,
-    agreeCount = 0,
-    flirtCount = 0,
-    mateCount = 0,
-    ignoreCount = 0
-  }
-
-resultStats :: Result -> [Stats.Statistic]
-resultStats r =
-  [
-    Stats.uiStat "size Δe" (sizeEnergyDelta r),
-    Stats.uiStat "child rearing Δe" (childRearingEnergyDelta r),
-    Stats.uiStat "foraging Δe" (foragingEnergyDelta r),
-    Stats.uiStat "cooperation Δe" (coopEnergyDelta r),
-    Stats.uiStat "agreement Δe" (agreementEnergyDelta r),
-    Stats.uiStat "flirting Δe" (flirtingEnergyDelta r),
-    Stats.uiStat "mating Δe" (matingEnergyDelta r),
-    Stats.uiStat "net Δe" (netEnergyDelta r),
-    Stats.iStat "bore" (birthCount r),
-    Stats.iStat "weaned" (weanCount r),
-    Stats.iStat "co-operated" (cooperateCount r),
-    Stats.iStat "agreed" (agreeCount r),
-    Stats.iStat "flirted" (flirtCount r),
-    Stats.iStat "mated" (mateCount r),
-    Stats.iStat "ignored" (ignoreCount r)
-  ]
-
-runMetabolism :: (Astronomer, Result) -> (Astronomer, Result)
-runMetabolism (a, r) = (a', r')
-  where a' = adjustPassion $ adjustEnergy deltaE a
-        r' = r {
-                 sizeEnergyDelta = sc,
-                 childRearingEnergyDelta = crc
-               }
-        deltaE = sc + crc
-        sc = sizeCost a
-        crc = childRearingCost a
-
-sizeCost :: Astronomer -> Double
-sizeCost a = -(b + s/m)
-  where s = fromIntegral (size a)
-        m = fromIntegral (C.maxSize C.config)
-        b = C.baseMetabolismCost C.config
-
-forage :: Int -> (Astronomer, Result) -> (Astronomer, Result)
-forage n (a, r) = (a', r')
-  where a' = adjustEnergy deltaE a
-        r' = r { foragingEnergyDelta = deltaE }
-        deltaE = foragingReward n
-
-foragingReward :: Int -> Double
-foragingReward n = max 0 $ (1 - n'/m)*(C.foragingMaxEnergyDelta C.config)
-  where n' = fromIntegral n
-        m = fromIntegral (C.maxPopulation C.config)
-
-schemaQuality :: Astronomer -> Double
-schemaQuality = schemaQuality' . elems . counterMap . classifier . brain
-
-schemaQuality' :: Integral a => [a] -> Double
-schemaQuality' xs = min 1 (n/xMax)
-  where n = fromIntegral $ categoriesReallyUsed' xs
-        xMax = fromIntegral $ C.maxCategories C.config
--- schemaQuality' xs = y*y
---   where y = 2*(x - 0.5)
---         x = (n - xMin)/(xMax - xMin)
---         n = min xMax . fromIntegral $ categoriesReallyUsed' xs
---         xMin = fromIntegral $ C.minCategories C.config
---         xMax = fromIntegral $ C.maxCategories C.config
-
-categoriesReallyUsed :: Astronomer -> Int
-categoriesReallyUsed
-  = categoriesReallyUsed' . elems . counterMap . classifier . brain
-
-categoriesReallyUsed' :: Integral a => [a] -> Int
--- categoriesReallyUsed' xs = length $ filter (>(s/4)) xs'
---   where s = getStandardDeviation xs'
---         xs' = map fromIntegral xs :: [Double]
-categoriesReallyUsed' xs = length $ filter (>k) xs
-  where k = (sum xs) `div` (fromIntegral $ C.maxCategories C.config)
-
-childRearingCost :: Astronomer -> Double
-childRearingCost a = x * (sum . map f $ litter a)
-    where x = C.childCostFactor C.config
-          f c = sizeCost c
-          
-run
-  :: Universe u
-    => [Astronomer] -> StateT u IO [Astronomer]
-run (me:xs) = do
-  when (null xs) $ writeToLog "WARNING: Last wain standing!"
-  writeToLog $ "---------- " ++ agentId me ++ "'s turn ----------"
-  writeToLog $ "Next in line: " ++ show (map agentId $ take 3 xs)
-  writeToLog $ "At beginning of turn, " ++ agentId me ++ "'s stats: "
-    ++ pretty (Stats.stats me)
-  k <- popSize
-  writeToLog $ "Pop. size=" ++ show k
-  let (me2, r) = forage k $ runMetabolism (me, initResult)
-  (x, y) <- chooseObjects xs
-  writeToLog $ agentId me ++ " sees " ++ objectId x
-    ++ " and " ++ objectId y
-  (imgLabel, action, me3)
-    <- chooseAction (objectAppearance x) (objectAppearance y) me2
-  writeToLog $ agentId me ++ " sees " ++ objectId x ++ ", labels it "
-    ++ show imgLabel ++ ", and chooses to "
-    ++ describe (objectId x) (objectId y) action
-  (me4:others, r4) <- runAction action (me3, r) x y imgLabel
-  me5 <- incAge me4
-  (me6:weanlings, r6) <- wean (me5, r4)
-  let r7 = r6 { netEnergyDelta = energy me6 - energy me}
-  let stats = Stats.stats me6 ++ resultStats r7
-  writeToLog $ "End of " ++ agentId me ++ "'s turn"
-  writeToLog $ "At end of turn, " ++ agentId me ++ "'s stats: "
-    ++ pretty stats
-  let modifiedAgents = me6:weanlings ++ others
-  writeToLog $ "Modified agents: " ++ show (map agentId modifiedAgents)
-  updateStats stats (C.statsFile C.config)
-  return modifiedAgents
-run _ = error "no more wains"
-
-describe :: String -> String -> Action -> String
-describe _ iObj Cooperate = "share that classification with " ++ iObj
-describe _ _    Flirt = "flirt"
-describe _ _    Ignore = "do nothing"
-
-chooseObjects
-  :: Universe u
-    => [Astronomer] -> StateT u IO (Object, Object)
-chooseObjects xs = do
-  -- writeToLog $ "Direct object = " ++ objectId x
-  -- writeToLog $ "Indirect object = " ++ objectId y
-  (x:y:_) <- liftIO . randomlyInsertImages . map AObject $ xs
-  return (x, y)
+import Text.Printf (printf)
 
 data Object = IObject Image String | AObject Astronomer
+
+isImage :: Object -> Bool
+isImage (IObject _ _) = True
+isImage (AObject _) = False
 
 objectId :: Object -> String
 objectId (IObject _ s) = "Image " ++ s
@@ -236,148 +67,460 @@ objectAppearance :: Object -> Image
 objectAppearance (IObject img _) = img
 objectAppearance (AObject a) = appearance a
 
-randomlyInsertImages :: [Object] -> IO [Object]
-randomlyInsertImages xs = do
+addIfAgent :: Object -> [Astronomer] -> [Astronomer]
+addIfAgent (IObject _ _) xs = xs
+addIfAgent (AObject a) xs = a:xs
+
+randomlyInsertImages :: ImageDB -> [Object] -> IO [Object]
+randomlyInsertImages db xs = do
   insert <- randomIO
   if insert
     then do
-      (img, imageId) <- evalStateT anyImage (C.imageDB C.config)
+      (img, imageId) <- evalStateT anyImage db
       n <- randomRIO (0, 1)
       let (fore, aft) = splitAt n xs
-      randomlyInsertImages $ fore ++ IObject img imageId : aft
+      randomlyInsertImages db $ fore ++ IObject img imageId : aft
     else
       return xs
 
-runAction
-  :: Universe u
-    => Action -> (Astronomer, Result) -> Object -> Object -> Label
-      -> StateT u IO ([Astronomer], Result)
+type Astronomer = Wain Image Action
+
+-- TODO: Redo with lenses
+
+randomAstronomer
+  :: RandomGen r
+    => String -> Int -> Int -> Word8 -> Word8 -> Word16 -> Rand r Astronomer
+randomAstronomer wainName w h classifierSize deciderSize mm = do
+  let n = fromIntegral $ 3*classifierSize*classifierSize
+  let app = stripedImage w h
+  imgs <- replicateM n (randomImage w h)
+  randomWain wainName app classifierSize imgs deciderSize mm
+
+data Config = Config
+  { universe :: CachedUniverse Astronomer,
+    statsFile :: FilePath,
+    sleepBetweenTasks :: Int,
+    imageDB :: ImageDB,
+    imageHeight :: Int,
+    imageWidth :: Int,
+    initialPopulationMaxClassifierSize :: Word8,
+    initialPopulationMaxDeciderSize :: Word8,
+    initialPopulationMaxAgeOfMaturity :: Word16,
+    initialPopulationSize :: Int,
+    baseMetabolismCost :: Double,
+    childCostFactor :: Double,
+    foragingIndex :: Int,
+    maxPopulationSize :: Int,
+    -- minCategories :: Int,
+    maxCategories :: Int,
+    maxSize :: Int,
+    flirtingDeltaE :: Double,
+    matingDeltaE :: Double,
+    cooperationDeltaE :: Double,
+    cooperationAgentAgreementDelta :: Double,
+    cooperationImageAgreementDelta :: Double
+  } deriving (Show, Eq)
+
+data Summary = Summary
+  {
+    _rSizeDeltaE :: Double,
+    _rChildRearingDeltaE :: Double,
+    _rForagingDeltaE :: Double,
+    _rCoopDeltaE :: Double,
+    _rAgreementDeltaE :: Double,
+    _rFlirtingDeltaE :: Double,
+    _rMatingDeltaE :: Double,
+    _rNetDeltaE :: Double,
+    _otherDeltaE :: Double,
+    _birthCount :: Int,
+    _weanCount :: Int,
+    _cooperateCount :: Int,
+    _agreeCount :: Int,
+    _flirtCount :: Int,
+    _mateCount :: Int,
+    _ignoreCount :: Int
+  }
+makeLenses ''Summary
+
+initSummary :: Summary
+initSummary = Summary
+  {
+    _rSizeDeltaE = 0,
+    _rChildRearingDeltaE = 0,
+    _rForagingDeltaE = 0,
+    _rCoopDeltaE = 0,
+    _rAgreementDeltaE = 0,
+    _rFlirtingDeltaE = 0,
+    _rMatingDeltaE = 0,
+    _rNetDeltaE = 0,
+    _otherDeltaE = 0,
+    _birthCount = 0,
+    _weanCount = 0,
+    _cooperateCount = 0,
+    _agreeCount = 0,
+    _flirtCount = 0,
+    _mateCount = 0,
+    _ignoreCount = 0
+  }
+
+summaryStats :: Summary -> [Stats.Statistic]
+summaryStats r =
+  [
+    Stats.uiStat "size Δe" (view rSizeDeltaE r),
+    Stats.uiStat "child rearing Δe" (view rChildRearingDeltaE r),
+    Stats.uiStat "foraging Δe" (view rForagingDeltaE r),
+    Stats.uiStat "cooperation Δe" (view rCoopDeltaE r),
+    Stats.uiStat "agreement Δe" (view rAgreementDeltaE r),
+    Stats.uiStat "flirting Δe" (view rFlirtingDeltaE r),
+    Stats.uiStat "mating Δe" (view rMatingDeltaE r),
+    Stats.uiStat "net Δe" (view rNetDeltaE r),
+    Stats.iStat "bore" (view birthCount r),
+    Stats.iStat "weaned" (view weanCount r),
+    Stats.iStat "co-operated" (view cooperateCount r),
+    Stats.iStat "agreed" (view agreeCount r),
+    Stats.iStat "flirted" (view flirtCount r),
+    Stats.iStat "mated" (view mateCount r),
+    Stats.iStat "ignored" (view ignoreCount r)
+  ]
+
+data Experiment = Experiment
+  {
+    _subject :: Astronomer,
+    _directObject :: Object,
+    _indirectObject :: Object,
+    _weanlings :: [Astronomer],
+    _config :: Config,
+    _summary :: Summary
+  }
+makeLenses ''Experiment
+
+run
+  :: Config -> [Astronomer]
+    -> StateT (CachedUniverse Astronomer) IO [Astronomer]
+run cfg (me:xs) = do
+  when (null xs) $ writeToLog "WARNING: Last wain standing!"
+  (x, y) <- chooseObjects xs (imageDB cfg)
+  let e = Experiment { _subject = me,
+                       _directObject = x,
+                       _indirectObject = y,
+                       _weanlings = [],
+                       _config = cfg,
+                       _summary = initSummary }
+  e' <- liftIO $ execStateT run' e
+  let modifiedAgents = addIfAgent (view directObject e')
+        . addIfAgent (view indirectObject e')
+            $ (view subject e'):(view weanlings e')
+  writeToLog $ "Modified agents: " ++ show (map agentId modifiedAgents)
+  return modifiedAgents
+run _ _ = error "no more wains"
+
+run' :: StateT Experiment IO ()
+run' = do
+  a <- use subject
+  withUniverse . writeToLog $ "---------- " ++ agentId a
+    ++ "'s turn ----------"
+  withUniverse . writeToLog $ "At beginning of turn, " ++ agentId a
+    ++ "'s summary: " ++ pretty (Stats.stats a)
+  forage
+  (imgLabel, action) <- chooseAction'
+  runAction action imgLabel
+  adjustSubjectPassion
+  when (hasLitter a) applyChildrearingCost
+  wean
+  applySizeCost
+  incSubjectAge
+  a' <- use subject
+  withUniverse . writeToLog $ "End of " ++ agentId a ++ "'s turn"
+  assign (summary.rNetDeltaE) (energy a' - energy a)
+  sf <- fmap statsFile $ use config
+  r <- fmap summaryStats $ use summary
+  withUniverse . writeToLog $ "At end of turn, " ++ agentId a
+    ++ "'s summary: " ++ pretty (Stats.stats a' ++ r)
+  withUniverse $ updateStats r sf
+
+applySizeCost :: StateT Experiment IO ()
+applySizeCost = do
+  a <- use subject
+  ms <- fmap maxSize $ use config
+  bms <- fmap baseMetabolismCost $ use config
+  let deltaE = sizeCost ms bms a
+  adjustSubjectEnergy deltaE rSizeDeltaE "size"
+
+applyChildrearingCost :: StateT Experiment IO ()
+applyChildrearingCost = do
+  a <- use subject
+  ccf <- fmap childCostFactor $ use config
+  ms <- fmap maxSize $ use config
+  bms <- fmap baseMetabolismCost $ use config
+  let deltaE = childRearingCost ms bms ccf a
+  adjustSubjectEnergy deltaE rChildRearingDeltaE "child rearing"
+
+sizeCost :: Int -> Double -> Astronomer -> Double
+sizeCost m b a = -(b + s/m')
+  where s = fromIntegral (size a)
+        m' = fromIntegral m
+
+childRearingCost :: Int -> Double -> Double -> Astronomer -> Double
+childRearingCost m b x a = x * (sum . map f $ litter a)
+    where f c = sizeCost m b c
+
+forage :: StateT Experiment IO ()
+forage = do
+  n <- withUniverse popSize
+  mp <- fmap maxPopulationSize $ use config
+  k <- fmap foragingIndex $ use config
+  withUniverse . writeToLog $ "Pop. size=" ++ show n
+  let deltaE = foragingReward mp n k
+  adjustSubjectEnergy deltaE rForagingDeltaE "foraging"
+
+foragingReward :: Int -> Int -> Int -> Double
+foragingReward mp n k = (2*(0.5 - n'/mp'))^k
+  where n' = fromIntegral n
+        mp' = fromIntegral mp
+
+schemaQuality :: Int -> Astronomer -> Double
+schemaQuality m
+  = schemaQuality' m . elems . counterMap . classifier . brain
+
+schemaQuality' :: Integral a => Int -> [a] -> Double
+schemaQuality' m xs = min 1 (n/xMax)
+  where n = fromIntegral $ categoriesReallyUsed' m xs
+        xMax = fromIntegral m
+-- schemaQuality' xs = y*y
+--   where y = 2*(x - 0.5)
+--         x = (n - xMin)/(xMax - xMin)
+--         n = min xMax . fromIntegral $ categoriesReallyUsed' xs
+--         xMin = fromIntegral $ C.minCategories C.config
+--         xMax = fromIntegral $ C.m C.config
+
+categoriesReallyUsed :: Int -> Astronomer -> Int
+categoriesReallyUsed m
+  = categoriesReallyUsed' m . elems . counterMap
+      . classifier . brain
+
+categoriesReallyUsed' :: Integral a => Int -> [a] -> Int
+categoriesReallyUsed' m xs = length $ filter (>k) xs
+  where k = (sum xs) `div` (fromIntegral m)
+
+chooseAction'
+  :: StateT Experiment IO (Label, Action)
+chooseAction' = do
+  a <- use subject
+  dObj <- use directObject
+  iObj <- use indirectObject
+  withUniverse . writeToLog $ agentId a ++ " sees " ++ objectId dObj
+    ++ " and " ++ objectId iObj
+  (imgLabel, action, a')
+    <- withUniverse $
+        chooseAction (objectAppearance dObj) (objectAppearance iObj) a
+  withUniverse . writeToLog $ agentId a ++ " labels " ++ objectId dObj
+    ++ " as " ++ show imgLabel ++ ", and chooses to "
+    ++ describe (objectId dObj) (objectId iObj) action
+  assign subject a'
+  return (imgLabel, action)
+
+incSubjectAge :: StateT Experiment IO ()
+incSubjectAge = do
+  a <- use subject
+  a' <- withUniverse (incAge a)
+  assign subject a'
+
+describe :: String -> String -> Action -> String
+describe _ iObj Cooperate = "share that classification with " ++ iObj
+describe _ _    Flirt = "flirt"
+describe _ _    Ignore = "do nothing"
+
+chooseObjects
+  :: [Astronomer] -> ImageDB
+    -> StateT (CachedUniverse Astronomer) IO (Object, Object)
+chooseObjects xs db = do
+  -- withUniverse . writeToLog $ "Direct object = " ++ objectId x
+  -- withUniverse . writeToLog $ "Indirect object = " ++ objectId y
+  (x:y:_) <- liftIO . randomlyInsertImages db . map AObject $ xs
+  return (x, y)
+
+runAction :: Action -> Label -> StateT Experiment IO ()
 
 --
 -- Co-operate
 --
-runAction Cooperate (a, r) dObj (AObject b) aLabel = do
-  let dObjId = objectId dObj
-  let dObjApp = objectAppearance dObj
-  writeToLog $ agentId a ++ " tells " ++ agentId b
-    ++ " that image " ++ dObjId ++ " has label "
-    ++ show aLabel
-  let (bLabel, b') = classify dObjApp b
-  if aLabel == bLabel
-    then agree ([a,b'], r) dObj aLabel
-    else disagree ([a,b'], r) dObj aLabel bLabel
-runAction Cooperate (a, r) _ _ _ = do
-  writeToLog $ agentId a ++ " tries to co-operate with an image"
-  return $ rewardCooperation ([a], r)
+runAction Cooperate aLabel = do
+  applyCooperationEffects
+  a <- use subject
+  dObj <- use directObject
+  iObj <- use indirectObject
+  case iObj of
+    AObject b   -> do
+      withUniverse . writeToLog $ agentId a ++ " tells " ++ agentId b
+        ++ " that image " ++ objectId dObj ++ " has label "
+        ++ show aLabel
+      let (bLabel, b') = classify (objectAppearance dObj) b
+      assign directObject (AObject b')
+      if aLabel == bLabel
+        then agree aLabel
+        else disagree aLabel bLabel
+    IObject _ _ -> return ()
   
 --
 -- Flirt
 --
-runAction Flirt (a, r) (AObject b) _ _ = do
-  writeToLog $ agentId a ++ " looks for a mate"
-  flirt ([a,b], r)
-
-runAction Flirt (a, r) (IObject _ imgId) _ _ = do
-  writeToLog $ agentId a ++ " flirted with image " ++ imgId
-  return $ rewardFlirtation ([a], r)
+runAction Flirt _ = do
+  applyFlirtationEffects
+  a <- use subject
+  dObj <- use directObject
+  withUniverse . writeToLog $
+    agentId a ++ " flirts with " ++ objectId dObj
+  if isImage dObj
+    then return ()
+    else flirt
 
 --
 -- Ignore
 --
-runAction Ignore (a, r) obj _ _ = do
-  writeToLog $ agentId a ++ " ignores " ++ objectId obj
-  return ([a], r { ignoreCount = ignoreCount r + 1 })
+runAction Ignore _ = do
+  a <- use subject
+  dObj <- use directObject
+  withUniverse . writeToLog $ agentId a ++ " ignores " ++ objectId dObj
+  (summary.ignoreCount) += 1
 
---
--- Utility functions
---
-agree
-  :: Universe u
-    => ([Astronomer], Result) -> Object -> Label
-      -> StateT u IO ([Astronomer], Result)
-agree x@((a:b:_), _) dObj label = do
-  let dObjId = objectId dObj
-  writeToLog $ agentId b ++ " agrees with " ++  agentId a
-    ++ " that " ++ dObjId ++ " has label " ++ show label
-  return . rewardCooperation $ rewardAgreement x dObj
-agree _ _ _ = error "Passed too few agents to agree"
-
-disagree
-  :: Universe u
-    => ([Astronomer], Result) -> Object -> Label -> Label
-      -> StateT u IO ([Astronomer], Result)
-disagree ((a:b:cs), r) dObj aLabel bLabel = do
-  let dObjId = objectId dObj
+-- --
+-- -- Utility functions
+-- --
+agree :: Label -> StateT Experiment IO ()
+agree label = do
+  a <- use subject
+  dObj <- use directObject
+  (AObject b) <- use indirectObject
   let dObjApp = objectAppearance dObj
-  writeToLog $ agentId b ++ " disagrees with " ++  agentId a
-    ++ ", says that " ++ dObjId ++ " has label "
+  withUniverse . writeToLog $ agentId b ++ " agrees with " ++  agentId a
+    ++ " that " ++ objectId dObj ++ " has label " ++ show label
+  a' <- withUniverse $ teachLabel dObjApp label a -- reinforce
+  b' <- withUniverse $ teachLabel dObjApp label b -- reinforce
+  assign subject a'
+  assign directObject (AObject b')
+  mc <- fmap maxCategories $ use config
+  applyAgreementEffects mc
+
+-- TODO: factor out common code in agree, disagree
+  
+disagree :: Label -> Label -> StateT Experiment IO ()
+disagree aLabel bLabel = do
+  a <- use subject
+  dObj <- use directObject
+  (AObject b) <- use indirectObject
+  let dObjApp = objectAppearance dObj
+  withUniverse . writeToLog $ agentId b ++ " disagrees with "
+    ++ agentId a ++ ", says that " ++ objectId dObj ++ " has label "
     ++ show bLabel
-  a' <- teachLabel dObjApp bLabel
-          . adjustEnergy (C.cooperationEnergyDelta C.config) $ a
-  b' <- teachLabel dObjApp aLabel b
-  return $ rewardCooperation (a':b':cs,r)
-disagree _ _ _ _ = error "Passed too few agents to disagree"
+  a' <- withUniverse $ teachLabel dObjApp bLabel a
+  b' <- withUniverse $ teachLabel dObjApp aLabel b
+  assign subject a'
+  assign directObject (AObject b')
 
-rewardCooperation :: ([Astronomer], Result) -> ([Astronomer], Result)
-rewardCooperation (a:bs, r) = (a':bs, r')
-  where a' = adjustEnergy deltaE a
-        r' = r { coopEnergyDelta = deltaE,
-                 cooperateCount = cooperateCount r + 1}
-        deltaE = C.cooperationEnergyDelta C.config
-rewardCooperation _ = error "Passed too few agents to rewardCooperation"
+applyCooperationEffects :: StateT Experiment IO ()
+applyCooperationEffects = do
+  deltaE <- fmap cooperationDeltaE $ use config
+  adjustSubjectEnergy deltaE rCoopDeltaE "cooperation"
+  (summary.cooperateCount) += 1
 
-rewardAgreement :: ([Astronomer], Result) -> Object -> ([Astronomer], Result)
-rewardAgreement (a:b:cs, r) dObj = (a':b':cs, r')
-  where a' = adjustEnergy deltaE a
-        b' = adjustEnergy deltaE b
-        r' = r { agreementEnergyDelta = deltaE,
-                 agreeCount = agreeCount r + 1}
-        deltaE = (schemaQuality a)
-                   *(f dObj)
-        f (AObject _) = C.cooperationObjectAgreementDelta C.config
-        f (IObject _ _) = C.cooperationImageAgreementDelta C.config
-rewardAgreement _ _ = error "Passed too few agents to rewardAgreement"
+applyAgreementEffects :: Int -> StateT Experiment IO ()
+applyAgreementEffects mc = do
+  b <- use indirectObject
+  aa <- fmap cooperationAgentAgreementDelta $ use config
+  ia <- fmap cooperationImageAgreementDelta $ use config
+  sc <- fmap (schemaQuality mc) $ use subject
+  let deltaE = if (isImage b) then ia*sc else aa*sc
+  adjustSubjectEnergy deltaE rAgreementDeltaE "agreement"
+  adjustObjectEnergy indirectObject deltaE "agreement"
+  (summary.agreeCount) += 1
 
-flirt
-  :: Universe u
-    => ([Astronomer], Result) -> StateT u IO ([Astronomer], Result)
-flirt (ws, r) = do
-  let (a:b:others, r2) = rewardFlirtation (ws, r)
-  (ws', mated) <- tryMating a b
+flirt :: StateT Experiment IO ()
+flirt = do
+  a <- use subject
+  (AObject b) <- use directObject
+  (a':b':_, mated) <- withUniverse (tryMating a b)
   if mated
-    then return . recordBirths $ rewardMating (ws', r2)
-    else return (ws' ++ others, r2)
+    then do
+      assign subject a'
+      assign directObject (AObject b')
+      recordBirths
+      applyMatingEffects
+    else return ()
 
-recordBirths :: ([Astronomer], Result) -> ([Astronomer], Result)
-recordBirths (ws, r) = (ws, r')
-  where r' = r { birthCount=length . litter $ head ws }
+recordBirths :: StateT Experiment IO ()
+recordBirths = do
+  a <- use subject
+  (summary.birthCount) += length (litter a)
 
-rewardFlirtation :: ([Astronomer], Result) -> ([Astronomer], Result)
-rewardFlirtation (a:others, r) = (a':others, r')
-  where a' = adjustEnergy deltaE a
-        r' = r { flirtingEnergyDelta=deltaE,
-                 flirtCount=flirtCount r + 1}
-        deltaE = C.flirtingEnergyDelta C.config
-rewardFlirtation x = x
+applyFlirtationEffects :: StateT Experiment IO ()
+applyFlirtationEffects = do
+  deltaE <- fmap flirtingDeltaE $ use config
+  adjustSubjectEnergy deltaE rFlirtingDeltaE "flirting"
+  (summary.flirtCount) += 1
 
-rewardMating :: ([Astronomer], Result) -> ([Astronomer], Result)
-rewardMating (a:others, r) = (a':others, r')
-  where a' = adjustEnergy deltaE a
-        r' = r { matingEnergyDelta=deltaE,
-                 mateCount=mateCount r + 1}
-        deltaE = C.flirtingEnergyDelta C.config
-rewardMating x = x
+applyMatingEffects :: StateT Experiment IO ()
+applyMatingEffects = do
+  deltaE <- fmap matingDeltaE $ use config
+  adjustSubjectEnergy deltaE rMatingDeltaE "mating"
+  adjustObjectEnergy directObject deltaE "mating"
+  (summary.mateCount) += 1
 
-wean
-  :: Universe u
-    => (Astronomer, Result) -> StateT u IO ([Astronomer], Result)
-wean (a, r) = do
-  as <- weanMatureChildren a
-  let r' = r { weanCount = weanCount r + length as - 1 }
-  return (as, r')
+wean :: StateT Experiment IO ()
+wean = do
+  (a:as) <- use subject >>= withUniverse . weanMatureChildren
+  assign subject a
+  assign weanlings as
+  (summary.weanCount) += length as
 
-finishRound :: Universe u => StateT u IO ()
-finishRound = do
-  xs <- readStats $ C.statsFile C.config
+withUniverse
+  :: Monad m
+    => StateT (CachedUniverse Astronomer) m a -> StateT Experiment m a
+withUniverse f = do
+  e <- get
+  let c = view config e
+  stateMap (\u -> set config (c{universe=u}) e) (universe . view config) f
+
+finishRound :: FilePath -> StateT (CachedUniverse Astronomer) IO ()
+finishRound f = do
+  xs <- readStats f
   summarise xs
-  clearStats $ C.statsFile C.config
+  clearStats f
+
+adjustSubjectEnergy
+  :: Double -> Simple Lens Summary Double -> String
+    -> StateT Experiment IO ()
+adjustSubjectEnergy deltaE selector reason = do
+  x <- use subject
+  let before = energy x
+  assign (summary . selector) deltaE
+  assign subject (adjustEnergy deltaE x)
+  after <- fmap energy $ use subject
+  withUniverse . writeToLog $ "Adjusting energy of " ++ agentId x
+    ++ " because of " ++ reason
+    ++ ". " ++ printf "%.3f" before ++ " + " ++ printf "%.3f" deltaE
+    ++ " = " ++ printf "%.3f" after
+
+adjustObjectEnergy
+  :: Simple Lens Experiment Object -> Double -> String
+    -> StateT Experiment IO ()
+adjustObjectEnergy objectSelector deltaE reason = do
+  x <- use objectSelector
+  case x of
+    AObject a -> do
+      let before = energy a
+      (summary . otherDeltaE) += deltaE
+      let a' = adjustEnergy deltaE a
+      let after = energy a'
+      assign objectSelector (AObject a')
+      withUniverse . writeToLog $ "Adjusting energy of " ++ agentId a
+        ++ " because of " ++ reason
+        ++ ". " ++ printf "%.3f" before ++ " + " ++ printf "%.3f" deltaE
+        ++ " = " ++ printf "%.3f" after
+    IObject _ _ -> return ()
+
+adjustSubjectPassion
+  :: StateT Experiment IO ()
+adjustSubjectPassion = do
+  x <- use subject
+  assign subject (adjustPassion x)
+

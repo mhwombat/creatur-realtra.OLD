@@ -13,11 +13,12 @@
 {-# LANGUAGE TypeFamilies #-}
 module Main where
 
-import ALife.Creatur.Universe (SimpleUniverse, agentIds, getAgent,
+import ALife.Creatur.Database (size)
+import ALife.Creatur.Universe (CachedUniverse, agentIds, getAgent,
   currentTime)
 import ALife.Creatur.Wain
-import ALife.Realtra.Wain (Astronomer, schemaQuality,
-  categoriesReallyUsed)
+import ALife.Realtra.Wain (Astronomer, Config, schemaQuality,
+  categoriesReallyUsed, universe, maxCategories)
 import ALife.Creatur.Wain.Brain (classifier)
 import ALife.Creatur.Wain.GeneticSOM (counterMap)
 import qualified ALife.Realtra.Config as Config
@@ -28,21 +29,21 @@ import System.Environment (getArgs)
 import Text.Printf (printf)
 
 getAndExamineAll
-  :: StateT (SimpleUniverse Astronomer) IO ()
-getAndExamineAll = do
+  :: Config -> StateT (CachedUniverse Astronomer) IO ()
+getAndExamineAll config = do
   names <- agentIds
-  mapM_ getAndExamine names
+  mapM_ (getAndExamine config) names
   
 getAndExamine
-  :: String -> StateT (SimpleUniverse Astronomer) IO ()
-getAndExamine s = do
+  :: Config -> String -> StateT (CachedUniverse Astronomer) IO ()
+getAndExamine config s = do
   a <- getAgent s
   case a of
-    (Right agent) -> liftIO $ examine agent
+    (Right agent) -> liftIO $ examine config agent
     (Left msg)    -> liftIO $ putStrLn msg 
   
-examine :: Astronomer -> IO ()
-examine a = do
+examine :: Config -> Astronomer -> IO ()
+examine config a = do
   putStrLn $ "name: " ++ show (name a)
   -- appearance
   -- brain
@@ -54,20 +55,20 @@ examine a = do
   putStrLn $ "numberOfChildren: " ++ show (numberOfChildren a)
   putStrLn $ "litter size: " ++ show (length $ litter a)
   putStrLn $ "counts=" ++ show (elems . counterMap . classifier $ brain a)
-  putStrLn $ "schema quality=" ++  printf "%5.3f" (schemaQuality a)
-  putStrLn $ "categories really used=" ++ show (categoriesReallyUsed a)
+  let mc = maxCategories config
+  putStrLn $ "schema quality=" ++  printf "%5.3f" (schemaQuality mc a)
+  putStrLn $ "categories really used=" ++ show (categoriesReallyUsed mc a)
   putStrLn $ "size: " ++ show (size a)
 
 main :: IO ()
 main = do
-  t <- evalStateT currentTime
-        (Config.universe Config.config :: SimpleUniverse Astronomer)
+  t <- evalStateT currentTime (universe Config.config)
   putStrLn $ "Universe time is " ++ show t
 
   args <- getArgs
   if null args
     then
-      evalStateT (getAndExamineAll) (Config.universe Config.config)
+      evalStateT (getAndExamineAll Config.config) (universe Config.config)
     else do
       let s = head args
-      evalStateT (getAndExamine s) (Config.universe Config.config)
+      evalStateT (getAndExamine Config.config s) (universe Config.config)

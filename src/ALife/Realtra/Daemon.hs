@@ -10,9 +10,11 @@
 -- Utility functions that don't fit anywhere else.
 --
 ------------------------------------------------------------------------
+{-# LANGUAGE TypeFamilies #-}
 module Main where
 
-import ALife.Realtra.Wain (run, finishRound)
+import ALife.Realtra.Wain (universe, sleepBetweenTasks, run,
+  finishRound, statsFile)
 import qualified ALife.Realtra.Config as Config
 import ALife.Creatur (programVersion)
 import ALife.Creatur.Daemon (Daemon(..), launch)
@@ -32,12 +34,14 @@ shutdownHandler programName u =
   >> return ()
 
 main :: IO ()
-main = launch daemon (Config.universe Config.config)
-  where daemon = simpleDaemon
-                   {task=runInteractingAgents run finishRound,
+main = launch daemon (universe Config.config)
+  where program = run Config.config
+        final = finishRound (statsFile Config.config)
+        daemon = simpleDaemon
+                   {task=runInteractingAgents program final,
                     onStartup=startupHandler message,
                     onShutdown=shutdownHandler message,
-                    sleepTime=Config.sleepBetweenTasks Config.config}
+                    sleepTime=sleepBetweenTasks Config.config}
         message = "creatur-realtra-" ++ showVersion version
           ++ ", compiled with " ++ ALife.Creatur.Wain.programVersion
           ++ ", " ++ ALife.Creatur.programVersion

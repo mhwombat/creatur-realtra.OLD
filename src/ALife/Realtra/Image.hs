@@ -19,8 +19,8 @@ module ALife.Realtra.Image
     randomImage,
     readImage,
     writeImage,
-    imageToArray,
-    arrayToImage
+    -- imageToArray,
+    -- arrayToImage
   ) where
 
 import ALife.Creatur.Genetics.BRGCWord8 (Genetic, put, get,
@@ -28,15 +28,17 @@ import ALife.Creatur.Genetics.BRGCWord8 (Genetic, put, get,
 import ALife.Creatur.Genetics.Diploid (Diploid, express)
 import ALife.Creatur.Wain.Pretty (Pretty, pretty)
 import ALife.Creatur.Wain.Util (forceIntToWord8, word8ToInt)
+import qualified Codec.Picture as P
 import Control.Applicative ((<$>), (<*>), pure)
 import Control.Monad.Random (Rand, RandomGen, getRandoms)
-import Data.Array.Repa (extent, toList)
-import Data.Array.Repa.Eval (fromList)
-import Data.Array.Repa.Index ((:.)(..), Z(..))
-import qualified Data.Array.Repa.IO.DevIL as I
-import Data.Array.Repa.Shape (listOfShape)
+-- import Data.Array.Repa (extent, toList)
+-- import Data.Array.Repa.Eval (fromList)
+-- import Data.Array.Repa.Index ((:.)(..), Z(..))
+-- import qualified Data.Array.Repa.IO.DevIL as I
+-- import Data.Array.Repa.Shape (listOfShape)
 import Data.Datamining.Pattern (Pattern(..))
 import Data.Serialize (Serialize)
+import Data.Vector.Storable (Vector, toList, fromList)
 import Data.Word (Word8)
 import GHC.Generics (Generic)
 
@@ -125,24 +127,32 @@ stripedImage w h = Image w h . map f $ indices w h
         halfWidth = round $ (fromIntegral w :: Double) / 2
 
 readImage :: FilePath -> IO Image
-readImage filePath =
-  I.runIL $ fmap arrayToImage $ I.readImage filePath
+readImage filePath = do
+  (Right x) <- P.readImage filePath -- TODO: handle errors better
+  let (P.ImageY8 img) = x
+  let ps = toList $ P.imageData img
+  return $ Image (P.imageWidth img) (P.imageHeight img) ps
+  -- I.runIL $ fmap arrayToImage $ I.readImage filePath
   
 writeImage :: FilePath -> Image -> IO ()
-writeImage filePath img =
-  I.runIL $ I.writeImage filePath $ imageToArray img
+writeImage filePath img = do
+  let ps = fromList $ pixels img :: Vector (P.PixelBaseComponent P.Pixel8)
+  let img' = P.Image (iWidth img) (iHeight img) ps :: P.Image P.Pixel8
+  -- let dImg = P.ImageY8 img'
+  P.writePng filePath img'
+  -- I.runIL $ I.writeImage filePath $ imageToArray img
 
-imageToArray :: Image -> I.Image
-imageToArray img = I.Grey arr
-  where w = iWidth img
-        h = iHeight img
-        xs = pixels img
-        arr = fromList ((Z :. h) :. w) xs
+-- imageToArray :: Image -> I.Image
+-- imageToArray img = I.Grey arr
+--   where w = iWidth img
+--         h = iHeight img
+--         xs = pixels img
+--         arr = fromList ((Z :. h) :. w) xs
 
-arrayToImage :: I.Image -> Image
-arrayToImage (I.Grey arr) = Image w h $ toList arr
-  where (w:h:_) = listOfShape . extent $ arr
-arrayToImage _ = error "Unsupported image type"
+-- arrayToImage :: I.Image -> Image
+-- arrayToImage (I.Grey arr) = Image w h $ toList arr
+--   where (w:h:_) = listOfShape . extent $ arr
+-- arrayToImage _ = error "Unsupported image type"
 
 adjust :: [Word8] -> Double -> [Word8] -> [Word8]
 adjust ts r xs

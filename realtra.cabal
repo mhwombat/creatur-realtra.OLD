@@ -1,5 +1,5 @@
 name:                creatur-realtra
-version:             1.0.8
+version:             1.0.9
 synopsis:            Agent for categorising images.
 description:         Experiment in analysing Galaxy Zoo data.
 homepage:            https://github.com/mhwombat/realtra
@@ -19,7 +19,7 @@ source-repository head
 source-repository this
   type:     git
   location: https://github.com/mhwombat/creatur-realtra.git
-  tag:      1.0.8
+  tag:      1.0.9
 
 executable realtra-daemon
   main-is:          ALife/Realtra/Daemon.hs
@@ -29,24 +29,27 @@ executable realtra-daemon
                     array ==0.4.* || ==0.5.*,
                     base ==4.*,
                     cereal ==0.3.* || ==0.4.*,
-                    creatur ==5.2.* && >=5.2.9,
-                    creatur-wains ==3.3.* && >=3.3.8,
+                    creatur ==5.3.* && >=5.3.1,
+                    creatur-wains ==3.3.* && >=3.3.9,
                     directory ==1.2.*,
                     factory ==0.2.*,
                     filepath ==1.3.*,
                     grid ==7.6.*,
                     hdaemonize ==0.4.*,
+                    JuicyPixels ==3.1.*,
+                    lens ==4.1.*,
                     MonadRandom ==0.1.*,
                     mtl ==2.1.*,
                     old-locale ==1.0.*,
                     random ==1.0.*,
-                    repa ==3.2.*,
-                    repa-devil ==0.3.*,
+                    -- repa ==3.2.*,
+                    -- repa-devil ==0.3.*,
                     som ==7.*,
                     split ==0.2.*,
                     time ==1.4.*,
                     transformers ==0.3.*,
                     unix ==2.6.* || ==2.7.*,
+                    vector ==0.10.*,
                     zlib ==0.5.*
   hs-source-dirs:   src
 
@@ -58,21 +61,24 @@ executable realtra-init
                     array ==0.4.* || ==0.5.*,
                     base ==4.*,
                     cereal ==0.3.* || ==0.4.*,
-                    creatur ==5.2.* && >=5.2.9,
-                    creatur-wains ==3.3.* && >=3.3.8,
+                    creatur ==5.3.* && >=5.3.1,
+                    creatur-wains ==3.3.* && >=3.3.9,
                     directory ==1.2.*,
                     grid ==7.6.*,
+                    JuicyPixels ==3.1.*,
+                    lens ==4.1.*,
                     MonadRandom ==0.1.*,
                     mtl ==2.1.*,
                     old-locale ==1.0.*,
                     random ==1.0.*,
-                    repa ==3.2.*,
-                    repa-devil ==0.3.*,
+                    -- repa ==3.2.*,
+                    -- repa-devil ==0.3.*,
                     som ==7.*,
                     split ==0.2.*,
                     time ==1.4.*,
                     transformers ==0.3.*,
                     unix ==2.6.* || ==2.7.*,
+                    vector ==0.10.*,
                     zlib ==0.5.*
   hs-source-dirs:   src
 
@@ -83,22 +89,25 @@ executable realtra-examine
                     array ==0.4.* || ==0.5.*,
                     base ==4.*,
                     cereal ==0.3.* || ==0.4.*,
-                    creatur ==5.2.* && >=5.2.9,
-                    creatur-wains ==3.3.* && >=3.3.8,
+                    creatur ==5.3.* && >=5.3.1,
+                    creatur-wains ==3.3.* && >=3.3.9,
                     directory ==1.2.*,
                     grid ==7.* && >7.1,
+                    JuicyPixels ==3.1.*,
+                    lens ==4.1.*,
                     list-grouping ==0.1.*,
                     MonadRandom ==0.1.*,
                     mtl ==2.1.*,
                     old-locale ==1.0.*,
                     random ==1.0.*,
-                    repa ==3.2.*,
-                    repa-devil ==0.3.*,
+                    -- repa ==3.2.*,
+                    -- repa-devil ==0.3.*,
                     som ==7.*,
                     split ==0.2.*,
                     time ==1.4.*,
                     transformers ==0.3.*,
                     unix ==2.6.* || ==2.7.*,
+                    vector ==0.10.*,
                     zlib ==0.5.*
   hs-source-dirs:   src
 
@@ -112,21 +121,24 @@ Test-suite realtra-tests
                     base ==4.*,
                     bytestring ==0.10.*,
                     cereal ==0.3.* || ==0.4.*,
-                    creatur ==5.2.* && >=5.2.9,
-                    creatur-wains ==3.3.* && >=3.3.8,
+                    creatur ==5.3.* && >=5.3.1,
+                    creatur-wains ==3.3.* && >=3.3.9,
                     directory ==1.2.*,
                     grid ==7.6.*,
+                    JuicyPixels ==3.1.*,
+                    lens ==4.1.*,
                     MonadRandom ==0.1.*,
                     mtl ==2.1.*,
                     random ==1.0.*,
-                    repa ==3.2.*,
-                    repa-devil ==0.3.*,
+                    -- repa ==3.2.*,
+                    -- repa-devil ==0.3.*,
                     som ==7.*,
                     test-framework ==0.8.*,
                     test-framework-hunit ==0.3.*,
                     test-framework-quickcheck2 ==0.3.*,
                     transformers ==0.3.*,
-                    QuickCheck ==2.6.*
+                    vector ==0.10.*,
+                    QuickCheck ==2.6.* || ==2.7.*
   Other-modules:    ALife.Realtra.Config
                     ALife.Realtra.ImageQC
 
@@ -139,19 +151,48 @@ Executable realtra-benchmark
                     bytestring ==0.10.*,
                     cereal ==0.3.* || ==0.4.*,
                     cond ==0.4.*,
-                    creatur ==5.2.* && >=5.2.10,
-                    creatur-wains ==3.3.* && >=3.3.8,
+                    creatur ==5.3.* && >=5.3.1,
+                    creatur-wains ==3.3.* && >=3.3.9,
                     directory ==1.2.*,
                     grid ==7.*,
+                    JuicyPixels ==3.1.*,
+                    lens ==4.1.*,
                     MonadRandom ==0.1.*,
                     mtl ==2.1.*,
                     random ==1.0.*,
-                    repa ==3.2.*,
-                    repa-devil ==0.3.*,
+                    -- repa ==3.2.*,
+                    -- repa-devil ==0.3.*,
                     som ==7.*,
                     temporary ==1.1.*,
                     time ==1.4.*,
                     transformers ==0.3.*,
                     test-framework ==0.8.*,
                     test-framework-quickcheck2 ==0.3.*,
-                    QuickCheck ==2.6.*
+                    vector ==0.10.*,
+                    QuickCheck ==2.6.* || ==2.7.*
+
+-- Executable realtra-benchmark2
+--   Main-is:          Benchmark2.hs
+--   GHC-Options:      -Wall -fno-warn-orphans -auto-all
+--   Hs-source-dirs:   test, src
+--   Build-Depends:    
+--                     base ==4.*,
+--                     bytestring ==0.10.*,
+--                     cereal ==0.3.* || ==0.4.*,
+--                     cond ==0.4.*,
+--                     creatur ==5.3.* && >=5.3.1,
+--                     creatur-wains ==3.3.* && >=3.3.9,
+--                     directory ==1.2.*,
+--                     grid ==7.*,
+--                     MonadRandom ==0.1.*,
+--                     mtl ==2.1.*,
+--                     random ==1.0.*,
+--                     repa ==3.2.*,
+--                     repa-devil ==0.3.*,
+--                     som ==7.*,
+--                     temporary ==1.1.*,
+--                     time ==1.4.*,
+--                     transformers ==0.3.*,
+--                     test-framework ==0.8.*,
+--                     test-framework-quickcheck2 ==0.3.*,
+--                     QuickCheck ==2.6.* || ==2.7.*

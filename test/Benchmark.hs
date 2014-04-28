@@ -5,7 +5,7 @@ import Data.Time.Clock
 
 import Prelude hiding (readFile, writeFile)
 import ALife.Creatur
-import ALife.Creatur.Wain hiding (size)
+import ALife.Creatur.Wain
 import ALife.Creatur.Wain.Brain
 import ALife.Realtra.Wain
 import ALife.Realtra.Image

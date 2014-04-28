@@ -13,7 +13,7 @@
 module Main where
 
 import ALife.Realtra.ActionQC (test)
-import ALife.Realtra.ImageQC (test)
+-- import ALife.Realtra.ImageQC (test)
 
 import Test.Framework as TF (defaultMain, Test)
 
@@ -21,8 +21,8 @@ tests :: [TF.Test]
 tests = 
   [
     -- In increasing order of complexity
-    ALife.Realtra.ActionQC.test,
-    ALife.Realtra.ImageQC.test
+    ALife.Realtra.ActionQC.test
+    -- ALife.Realtra.ImageQC.test
   ]
 
 main :: IO ()
