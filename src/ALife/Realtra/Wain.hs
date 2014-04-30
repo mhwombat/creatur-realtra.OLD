@@ -108,6 +108,7 @@ data Config = Config
     initialPopulationMaxAgeOfMaturity :: Word16,
     initialPopulationSize :: Int,
     baseMetabolismCost :: Double,
+    maxSizeBasedMetabolismCost :: Double,
     childCostFactor :: Double,
     foragingIndex :: Int,
     maxPopulationSize :: Int,
@@ -243,7 +244,8 @@ applySizeCost = do
   a <- use subject
   ms <- fmap maxSize $ use config
   bms <- fmap baseMetabolismCost $ use config
-  let deltaE = sizeCost ms bms a
+  msbmc <- fmap maxSizeBasedMetabolismCost $ use config
+  let deltaE = sizeCost ms bms msbmc a
   adjustSubjectEnergy deltaE rSizeDeltaE "size"
 
 applyChildrearingCost :: StateT Experiment IO ()
@@ -252,17 +254,18 @@ applyChildrearingCost = do
   ccf <- fmap childCostFactor $ use config
   ms <- fmap maxSize $ use config
   bms <- fmap baseMetabolismCost $ use config
-  let deltaE = childRearingCost ms bms ccf a
+  msbmc <- fmap maxSizeBasedMetabolismCost $ use config
+  let deltaE = childRearingCost ms bms msbmc ccf a
   adjustSubjectEnergy deltaE rChildRearingDeltaE "child rearing"
 
-sizeCost :: Int -> Double -> Astronomer -> Double
-sizeCost m b a = -(b + s/m')
+sizeCost :: Int -> Double -> Double -> Astronomer -> Double
+sizeCost m b f a = -(b + f*s/m')
   where s = fromIntegral (size a)
         m' = fromIntegral m
 
-childRearingCost :: Int -> Double -> Double -> Astronomer -> Double
-childRearingCost m b x a = x * (sum . map f $ litter a)
-    where f c = sizeCost m b c
+childRearingCost :: Int -> Double -> Double -> Double -> Astronomer -> Double
+childRearingCost m b f x a = x * (sum . map g $ litter a)
+    where g c = sizeCost m b f c
 
 forage :: StateT Experiment IO ()
 forage = do

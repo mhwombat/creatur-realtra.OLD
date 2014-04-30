@@ -87,7 +87,9 @@ config = Config
     maxSize = 500000,
 
     baseMetabolismCost = 0.1,
-    
+
+    maxSizeBasedMetabolismCost = 0.1,
+
     --
     -- A wain rearing a child pays a fraction of the metabolic cost
     -- that the child would pay if it were full-grown. It's only a
