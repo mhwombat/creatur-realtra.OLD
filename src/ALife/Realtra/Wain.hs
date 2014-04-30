@@ -28,7 +28,7 @@ module ALife.Realtra.Wain
 
 import ALife.Creatur (agentId)
 import ALife.Creatur.Database (size)
-import ALife.Creatur.Universe (CachedUniverse, writeToLog, popSize)
+import ALife.Creatur.Universe (Universe, Agent, writeToLog, popSize)
 import ALife.Creatur.Util (stateMap)
 import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
   chooseAction, randomWain, classify, teachLabel, incAge,
@@ -96,8 +96,8 @@ randomAstronomer wainName w h classifierSize deciderSize mm = do
   imgs <- replicateM n (randomImage w h)
   randomWain wainName app classifierSize imgs deciderSize mm
 
-data Config = Config
-  { universe :: CachedUniverse Astronomer,
+data Config u = Config
+  { universe :: u,
     statsFile :: FilePath,
     sleepBetweenTasks :: Int,
     imageDB :: ImageDB,
@@ -184,20 +184,20 @@ summaryStats r =
     Stats.iStat "ignored" (view ignoreCount r)
   ]
 
-data Experiment = Experiment
+data Experiment u = Experiment
   {
     _subject :: Astronomer,
     _directObject :: Object,
     _indirectObject :: Object,
     _weanlings :: [Astronomer],
-    _config :: Config,
+    _config :: Config u,
     _summary :: Summary
   }
 makeLenses ''Experiment
 
 run
-  :: Config -> [Astronomer]
-    -> StateT (CachedUniverse Astronomer) IO [Astronomer]
+  :: (Universe u, Agent u ~ Astronomer)
+    => Config u -> [Astronomer] -> StateT u IO [Astronomer]
 run cfg (me:xs) = do
   when (null xs) $ writeToLog "WARNING: Last wain standing!"
   (x, y) <- chooseObjects xs (imageDB cfg)
@@ -215,7 +215,7 @@ run cfg (me:xs) = do
   return modifiedAgents
 run _ _ = error "no more wains"
 
-run' :: StateT Experiment IO ()
+run' :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()
 run' = do
   a <- use subject
   withUniverse . writeToLog $ "---------- " ++ agentId a
@@ -239,7 +239,9 @@ run' = do
     ++ "'s summary: " ++ pretty (Stats.stats a' ++ r)
   withUniverse $ updateStats r sf
 
-applySizeCost :: StateT Experiment IO ()
+applySizeCost
+  :: (Universe u, Agent u ~ Astronomer)
+    => StateT (Experiment u) IO ()
 applySizeCost = do
   a <- use subject
   ms <- fmap maxSize $ use config
@@ -248,7 +250,9 @@ applySizeCost = do
   let deltaE = sizeCost ms bms msbmc a
   adjustSubjectEnergy deltaE rSizeDeltaE "size"
 
-applyChildrearingCost :: StateT Experiment IO ()
+applyChildrearingCost
+  :: (Universe u, Agent u ~ Astronomer)
+    => StateT (Experiment u) IO ()
 applyChildrearingCost = do
   a <- use subject
   ccf <- fmap childCostFactor $ use config
@@ -267,7 +271,7 @@ childRearingCost :: Int -> Double -> Double -> Double -> Astronomer -> Double
 childRearingCost m b f x a = x * (sum . map g $ litter a)
     where g c = sizeCost m b f c
 
-forage :: StateT Experiment IO ()
+forage :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()
 forage = do
   n <- withUniverse popSize
   mp <- fmap maxPopulationSize $ use config
@@ -306,7 +310,8 @@ categoriesReallyUsed' m xs = length $ filter (>k) xs
   where k = (sum xs) `div` (fromIntegral m)
 
 chooseAction'
-  :: StateT Experiment IO (Label, Action)
+  :: (Universe u, Agent u ~ Astronomer)
+    => StateT (Experiment u) IO (Label, Action)
 chooseAction' = do
   a <- use subject
   dObj <- use directObject
@@ -322,7 +327,9 @@ chooseAction' = do
   assign subject a'
   return (imgLabel, action)
 
-incSubjectAge :: StateT Experiment IO ()
+incSubjectAge
+  :: (Universe u, Agent u ~ Astronomer)
+    => StateT (Experiment u) IO ()
 incSubjectAge = do
   a <- use subject
   a' <- withUniverse (incAge a)
@@ -334,15 +341,17 @@ describe _ _    Flirt = "flirt"
 describe _ _    Ignore = "do nothing"
 
 chooseObjects
-  :: [Astronomer] -> ImageDB
-    -> StateT (CachedUniverse Astronomer) IO (Object, Object)
+  :: (Universe u, Agent u ~ Astronomer)
+    => [Astronomer] -> ImageDB -> StateT u IO (Object, Object)
 chooseObjects xs db = do
   -- withUniverse . writeToLog $ "Direct object = " ++ objectId x
   -- withUniverse . writeToLog $ "Indirect object = " ++ objectId y
   (x:y:_) <- liftIO . randomlyInsertImages db . map AObject $ xs
   return (x, y)
 
-runAction :: Action -> Label -> StateT Experiment IO ()
+runAction
+  :: (Universe u, Agent u ~ Astronomer)
+    => Action -> Label -> StateT (Experiment u) IO ()
 
 --
 -- Co-operate
@@ -389,7 +398,9 @@ runAction Ignore _ = do
 -- --
 -- -- Utility functions
 -- --
-agree :: Label -> StateT Experiment IO ()
+agree
+  :: (Universe u, Agent u ~ Astronomer)
+    => Label -> StateT (Experiment u) IO ()
 agree label = do
   a <- use subject
   dObj <- use directObject
@@ -406,7 +417,9 @@ agree label = do
 
 -- TODO: factor out common code in agree, disagree
   
-disagree :: Label -> Label -> StateT Experiment IO ()
+disagree
+  :: (Universe u, Agent u ~ Astronomer)
+    => Label -> Label -> StateT (Experiment u) IO ()
 disagree aLabel bLabel = do
   a <- use subject
   dObj <- use directObject
@@ -420,13 +433,17 @@ disagree aLabel bLabel = do
   assign subject a'
   assign directObject (AObject b')
 
-applyCooperationEffects :: StateT Experiment IO ()
+applyCooperationEffects
+  :: (Universe u, Agent u ~ Astronomer)
+    => StateT (Experiment u) IO ()
 applyCooperationEffects = do
   deltaE <- fmap cooperationDeltaE $ use config
   adjustSubjectEnergy deltaE rCoopDeltaE "cooperation"
   (summary.cooperateCount) += 1
 
-applyAgreementEffects :: Int -> StateT Experiment IO ()
+applyAgreementEffects
+  :: (Universe u, Agent u ~ Astronomer)
+    => Int -> StateT (Experiment u) IO ()
 applyAgreementEffects mc = do
   b <- use indirectObject
   aa <- fmap cooperationAgentAgreementDelta $ use config
@@ -437,7 +454,7 @@ applyAgreementEffects mc = do
   adjustObjectEnergy indirectObject deltaE "agreement"
   (summary.agreeCount) += 1
 
-flirt :: StateT Experiment IO ()
+flirt :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()
 flirt = do
   a <- use subject
   (AObject b) <- use directObject
@@ -450,25 +467,29 @@ flirt = do
       applyMatingEffects
     else return ()
 
-recordBirths :: StateT Experiment IO ()
+recordBirths :: StateT (Experiment u) IO ()
 recordBirths = do
   a <- use subject
   (summary.birthCount) += length (litter a)
 
-applyFlirtationEffects :: StateT Experiment IO ()
+applyFlirtationEffects
+  :: (Universe u, Agent u ~ Astronomer)
+    => StateT (Experiment u) IO ()
 applyFlirtationEffects = do
   deltaE <- fmap flirtingDeltaE $ use config
   adjustSubjectEnergy deltaE rFlirtingDeltaE "flirting"
   (summary.flirtCount) += 1
 
-applyMatingEffects :: StateT Experiment IO ()
+applyMatingEffects
+  :: (Universe u, Agent u ~ Astronomer)
+    => StateT (Experiment u) IO ()
 applyMatingEffects = do
   deltaE <- fmap matingDeltaE $ use config
   adjustSubjectEnergy deltaE rMatingDeltaE "mating"
   adjustObjectEnergy directObject deltaE "mating"
   (summary.mateCount) += 1
 
-wean :: StateT Experiment IO ()
+wean :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()
 wean = do
   (a:as) <- use subject >>= withUniverse . weanMatureChildren
   assign subject a
@@ -476,22 +497,25 @@ wean = do
   (summary.weanCount) += length as
 
 withUniverse
-  :: Monad m
-    => StateT (CachedUniverse Astronomer) m a -> StateT Experiment m a
+  :: (Universe u, Agent u ~ Astronomer, Monad m)
+    => StateT u m a -> StateT (Experiment u) m a
 withUniverse f = do
   e <- get
   let c = view config e
   stateMap (\u -> set config (c{universe=u}) e) (universe . view config) f
 
-finishRound :: FilePath -> StateT (CachedUniverse Astronomer) IO ()
+finishRound
+  :: (Universe u, Agent u ~ Astronomer)
+    => FilePath -> StateT u IO ()
 finishRound f = do
   xs <- readStats f
   summarise xs
   clearStats f
 
 adjustSubjectEnergy
-  :: Double -> Simple Lens Summary Double -> String
-    -> StateT Experiment IO ()
+  :: (Universe u, Agent u ~ Astronomer)
+    => Double -> Simple Lens Summary Double -> String
+      -> StateT (Experiment u) IO ()
 adjustSubjectEnergy deltaE selector reason = do
   x <- use subject
   let before = energy x
@@ -504,8 +528,9 @@ adjustSubjectEnergy deltaE selector reason = do
     ++ " = " ++ printf "%.3f" after
 
 adjustObjectEnergy
-  :: Simple Lens Experiment Object -> Double -> String
-    -> StateT Experiment IO ()
+  :: (Universe u, Agent u ~ Astronomer)
+    => Simple Lens (Experiment u) Object -> Double -> String
+      -> StateT (Experiment u) IO ()
 adjustObjectEnergy objectSelector deltaE reason = do
   x <- use objectSelector
   case x of
@@ -522,7 +547,7 @@ adjustObjectEnergy objectSelector deltaE reason = do
     IObject _ _ -> return ()
 
 adjustSubjectPassion
-  :: StateT Experiment IO ()
+  :: StateT (Experiment u) IO ()
 adjustSubjectPassion = do
   x <- use subject
   assign subject (adjustPassion x)

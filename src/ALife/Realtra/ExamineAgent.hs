@@ -14,7 +14,7 @@
 module Main where
 
 import ALife.Creatur.Database (size)
-import ALife.Creatur.Universe (CachedUniverse, agentIds, getAgent,
+import ALife.Creatur.Universe (Universe, Agent, agentIds, getAgent,
   currentTime)
 import ALife.Creatur.Wain
 import ALife.Realtra.Wain (Astronomer, Config, schemaQuality,
@@ -29,20 +29,22 @@ import System.Environment (getArgs)
 import Text.Printf (printf)
 
 getAndExamineAll
-  :: Config -> StateT (CachedUniverse Astronomer) IO ()
+  :: (Universe u, Agent u ~ Astronomer)
+    => Config u -> StateT u IO ()
 getAndExamineAll config = do
   names <- agentIds
   mapM_ (getAndExamine config) names
   
 getAndExamine
-  :: Config -> String -> StateT (CachedUniverse Astronomer) IO ()
+  :: (Universe u, Agent u ~ Astronomer)
+    => Config u -> String -> StateT u IO ()
 getAndExamine config s = do
   a <- getAgent s
   case a of
     (Right agent) -> liftIO $ examine config agent
     (Left msg)    -> liftIO $ putStrLn msg 
   
-examine :: Config -> Astronomer -> IO ()
+examine :: Config u -> Astronomer -> IO ()
 examine config a = do
   putStrLn $ "name: " ++ show (name a)
   -- appearance

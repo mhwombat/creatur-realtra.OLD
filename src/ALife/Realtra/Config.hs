@@ -13,19 +13,25 @@
 {-# LANGUAGE TypeFamilies #-}
 module ALife.Realtra.Config where
 
-import ALife.Creatur.Universe (mkCachedUniverse)
+import ALife.Creatur.Universe (CachedUniverse, mkCachedUniverse)
 import ALife.Realtra.ImageDB (mkImageDB)
-import ALife.Realtra.Wain (Config(..))
+import ALife.Realtra.Wain (Astronomer, Config(..))
 
 onServer :: Bool
 onServer = False
 
-config :: Config
+config :: Config (CachedUniverse Astronomer)
 config = Config
   {
     universe
-      = mkCachedUniverse "GalaxyZoo" "/home/amy/alife/gzoo1" 100000 20000000,
-
+      = mkCachedUniverse
+          "GalaxyZoo"             -- experiment name
+          "/home/amy/alife/gzoo1" -- directory
+          100000                  -- rotate log after this many records
+          (if onServer            -- cache size (in bytes)
+             then 20000000       
+             else 10000000000),
+    
     statsFile = "/home/amy/alife/gzoo1/stats",
 
     -- Number of microseconds to sleep after each agent gets its turn
@@ -55,7 +61,7 @@ config = Config
     initialPopulationMaxAgeOfMaturity = if onServer then 100 else 2,
 
     -- The size of the initial population.
-    initialPopulationSize = if onServer then 200 else 2,
+    initialPopulationSize = if onServer then 200 else 3,
 
     -- The maximum population size.
     -- As the population increases toward this limit, the metabolism
