@@ -55,7 +55,7 @@ config = Config
     initialPopulationMaxAgeOfMaturity = if onServer then 100 else 2,
 
     -- The size of the initial population.
-    initialPopulationSize = if onServer then 200 else 3,
+    initialPopulationSize = if onServer then 200 else 2,
 
     -- The maximum population size.
     -- As the population increases toward this limit, the metabolism
@@ -86,22 +86,31 @@ config = Config
     -- a bit higher than your desired maximum.
     maxSize = 500000,
 
-    baseMetabolismCost = 0.1,
+    -- To ensure that smaller agents don't have an excessive advantage
+    -- over larger agents, part of the metabolic cost is fixed.
+    -- Compare with maxSizeBasedMetabolismCost.
+    -- You probably won't need to alter this field.
+    baseMetabolismCost = 0.05,
 
-    maxSizeBasedMetabolismCost = 0.1,
+    -- To ensure that agents use resources efficiently, part of their
+    -- metabolic cost is based on their size.
+    -- You probably won't need to alter this field.
+    maxSizeBasedMetabolismCost = 0.05,
 
-    --
     -- A wain rearing a child pays a fraction of the metabolic cost
     -- that the child would pay if it were full-grown. It's only a
     -- fraction because, biologically speaking, a child is only
     -- completely helpless when it's small (so the resource
     -- cost of raising it would be small).
-    --
+    -- You probably won't need to alter this field.
     childCostFactor = 0.2,
 
-    --
-    -- This must be an ODD integer >= 1
-    --
+    -- This must be an ODD integer >= 1. It is used to shape the
+    -- reward/cost function for foraging. Higher values mean that
+    -- rewards will be smaller except when the population is very near
+    -- zero, and costs will be smaller except when the population is
+    -- very near the maximum.
+    -- You probably won't need to alter this field.
     foragingIndex = 3,
     
     --
@@ -115,8 +124,6 @@ config = Config
     -- Every time an agent flirts, its energy changes by a fixed amount.
     -- This is normally an energy LOSS, so it should be negative.
     flirtingDeltaE = -0.01,
-
-    -- Also see passionDelta
 
     -- Note: Passion is reset to zero after mating.
 
