@@ -234,10 +234,10 @@ run' = do
   withUniverse . writeToLog $ "End of " ++ agentId a ++ "'s turn"
   assign (summary.rNetDeltaE) (energy a' - energy a)
   sf <- fmap statsFile $ use config
-  r <- fmap summaryStats $ use summary
+  agentStats <- fmap ((Stats.stats a' ++) . summaryStats) $ use summary
   withUniverse . writeToLog $ "At end of turn, " ++ agentId a
-    ++ "'s summary: " ++ pretty (Stats.stats a' ++ r)
-  withUniverse $ updateStats r sf
+    ++ "'s summary: " ++ pretty agentStats
+  withUniverse $ updateStats agentStats sf
 
 applySizeCost
   :: (Universe u, Agent u ~ Astronomer)

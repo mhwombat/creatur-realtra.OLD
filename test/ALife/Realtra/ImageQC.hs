@@ -73,15 +73,15 @@ instance Arbitrary Image where
 -- instance Arbitrary ValidImage where
 --   arbitrary = ValidImage <$> dimensionedArbImage imageWidth imageHeight
 
-prop_imageToArray_round_trippable :: Image -> Property
-prop_imageToArray_round_trippable x = property $ x' == x
-  where x' = arrayToImage . imageToArray $ x
+-- prop_imageToArray_round_trippable :: Image -> Property
+-- prop_imageToArray_round_trippable x = property $ x' == x
+--   where x' = arrayToImage . imageToArray $ x
 
 test :: Test
 test = testGroup "ALife.Realtra.ImageQC"
   [
-    testProperty "prop_imageToArray_round_trippable"
-      prop_imageToArray_round_trippable,
+    -- testProperty "prop_imageToArray_round_trippable"
+    --   prop_imageToArray_round_trippable,
     testProperty "prop_serialize_round_trippable - Image"
       (prop_serialize_round_trippable :: Image -> Property),
     testProperty "prop_genetic_round_trippable - Image"
