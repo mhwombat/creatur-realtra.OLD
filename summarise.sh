@@ -2,7 +2,7 @@
 logdir=~/alife/gzoo1/log
 logname=GalaxyZoo.log
 current=${logdir}/GalaxyZoo.log
-numbers=`ls ${logdir}/${logname}.* | sed 's/.*\.//' | sort -n | sed "s!^!${logdir}/${logname}.!"`
+numbers=`ls ${logdir}/${logname}.* 2> /dev/null | sed 's/.*\.//' | sort -n | sed "s!^!${logdir}/${logname}.!"`
 
 
 extractStats ()

@@ -107,8 +107,8 @@ data Config u = Config
     initialPopulationMaxDeciderSize :: Word8,
     initialPopulationMaxAgeOfMaturity :: Word16,
     initialPopulationSize :: Int,
-    baseMetabolismCost :: Double,
-    maxSizeBasedMetabolismCost :: Double,
+    baseMetabolismDeltaE :: Double,
+    maxSizeBasedMetabolismDeltaE :: Double,
     childCostFactor :: Double,
     foragingIndex :: Int,
     maxPopulationSize :: Int,
@@ -245,8 +245,8 @@ applySizeCost
 applySizeCost = do
   a <- use subject
   ms <- fmap maxSize $ use config
-  bms <- fmap baseMetabolismCost $ use config
-  msbmc <- fmap maxSizeBasedMetabolismCost $ use config
+  bms <- fmap baseMetabolismDeltaE $ use config
+  msbmc <- fmap maxSizeBasedMetabolismDeltaE $ use config
   let deltaE = sizeCost ms bms msbmc a
   adjustSubjectEnergy deltaE rSizeDeltaE "size"
 
@@ -257,13 +257,13 @@ applyChildrearingCost = do
   a <- use subject
   ccf <- fmap childCostFactor $ use config
   ms <- fmap maxSize $ use config
-  bms <- fmap baseMetabolismCost $ use config
-  msbmc <- fmap maxSizeBasedMetabolismCost $ use config
+  bms <- fmap baseMetabolismDeltaE $ use config
+  msbmc <- fmap maxSizeBasedMetabolismDeltaE $ use config
   let deltaE = childRearingCost ms bms msbmc ccf a
   adjustSubjectEnergy deltaE rChildRearingDeltaE "child rearing"
 
 sizeCost :: Int -> Double -> Double -> Astronomer -> Double
-sizeCost m b f a = -(b + f*s/m')
+sizeCost m b f a = b + f*s/m'
   where s = fromIntegral (size a)
         m' = fromIntegral m
 
@@ -367,7 +367,7 @@ runAction Cooperate aLabel = do
         ++ " that image " ++ objectId dObj ++ " has label "
         ++ show aLabel
       let (bLabel, b') = classify (objectAppearance dObj) b
-      assign directObject (AObject b')
+      assign indirectObject (AObject b')
       if aLabel == bLabel
         then agree aLabel
         else disagree aLabel bLabel
@@ -411,7 +411,7 @@ agree label = do
   a' <- withUniverse $ teachLabel dObjApp label a -- reinforce
   b' <- withUniverse $ teachLabel dObjApp label b -- reinforce
   assign subject a'
-  assign directObject (AObject b')
+  assign indirectObject (AObject b')
   mc <- fmap maxCategories $ use config
   applyAgreementEffects mc
 
@@ -431,7 +431,7 @@ disagree aLabel bLabel = do
   a' <- withUniverse $ teachLabel dObjApp bLabel a
   b' <- withUniverse $ teachLabel dObjApp aLabel b
   assign subject a'
-  assign directObject (AObject b')
+  assign indirectObject (AObject b')
 
 applyCooperationEffects
   :: (Universe u, Agent u ~ Astronomer)

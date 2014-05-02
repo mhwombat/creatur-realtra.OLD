@@ -61,7 +61,7 @@ config = Config
     initialPopulationMaxAgeOfMaturity = if onServer then 100 else 2,
 
     -- The size of the initial population.
-    initialPopulationSize = if onServer then 200 else 3,
+    initialPopulationSize = if onServer then 200 else 10,
 
     -- The maximum population size.
     -- As the population increases toward this limit, the metabolism
@@ -94,14 +94,16 @@ config = Config
 
     -- To ensure that smaller agents don't have an excessive advantage
     -- over larger agents, part of the metabolic cost is fixed.
-    -- Compare with maxSizeBasedMetabolismCost.
+    -- Compare with maxSizeBasedMetabolismDeltaE.
     -- You probably won't need to alter this field.
-    baseMetabolismCost = 0.05,
+    -- This is normally an energy LOSS, so it should be negative.
+    baseMetabolismDeltaE = -0.05,
 
     -- To ensure that agents use resources efficiently, part of their
     -- metabolic cost is based on their size.
     -- You probably won't need to alter this field.
-    maxSizeBasedMetabolismCost = 0.05,
+    -- This is normally an energy LOSS, so it should be negative.
+    maxSizeBasedMetabolismDeltaE = -0.05,
 
     -- A wain rearing a child pays a fraction of the metabolic cost
     -- that the child would pay if it were full-grown. It's only a
