@@ -445,7 +445,7 @@ applyAgreementEffects
   :: (Universe u, Agent u ~ Astronomer)
     => Int -> StateT (Experiment u) IO ()
 applyAgreementEffects mc = do
-  b <- use indirectObject
+  b <- use directObject
   aa <- fmap cooperationAgentAgreementDelta $ use config
   ia <- fmap cooperationImageAgreementDelta $ use config
   sc <- fmap (schemaQuality mc) $ use subject
