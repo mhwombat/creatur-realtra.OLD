@@ -150,17 +150,17 @@ config = Config
     -- This is normally an energy LOSS, so it should be negative.
     cooperationDeltaE = -0.01,
 
-    -- When two agents co-operate, and agree on a classification, their
-    -- energy changes by this amount, multiplied by the quality of
-    -- the overall classification schema.
+    -- When two agents co-operate, and agree on a classification of an
+    -- *agent*, their energy changes by this amount, multiplied by the
+    -- quality of the overall classification schema.
     -- This is normally an energy GAIN, so it should be positive.
-    cooperationAgentAgreementDelta = 1.0,
+    cooperationAgentAgreementDelta = 0.01,
 
-    -- When two agents co-operate, and agree on a classification, their
-    -- energy changes by this amount, multiplied by the quality of
-    -- the overall classification schema.
+    -- When two agents co-operate, and agree on a classification of an
+    -- *image*, their energy changes by this amount, multiplied by the
+    -- quality of the overall classification schema.
     -- This is normally an energy GAIN, so it should be positive.
-    cooperationImageAgreementDelta = 0.01
+    cooperationImageAgreementDelta = 1.0
   }
 
 
