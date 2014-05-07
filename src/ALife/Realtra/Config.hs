@@ -27,7 +27,6 @@ config = Config
       = mkCachedUniverse
           "GalaxyZoo"             -- experiment name
           "/home/amy/alife/gzoo1" -- directory
-          100000                  -- rotate log after this many records
           (if onServer            -- cache size (in bytes)
              then 20000000       
              else 10000000000),
