@@ -32,8 +32,7 @@ import ALife.Creatur.Universe (Universe, Agent, writeToLog, popSize)
 import ALife.Creatur.Util (stateMap)
 import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
   chooseAction, randomWain, classify, teachLabel, incAge,
-  weanMatureChildren, tryMating, energy, passion, hasLitter, feedback,
-  happiness)
+  weanMatureChildren, tryMating, energy, passion, hasLitter, reflect)
 import ALife.Creatur.Wain.Brain (classifier)
 import ALife.Creatur.Wain.GeneticSOM (counterMap)
 import ALife.Creatur.Wain.Pretty (pretty)
@@ -555,7 +554,9 @@ adjustSubjectPassion = do
   assign subject (adjustPassion x)
 
 letSubjectReflect
-  :: StateT (Experiment u) IO ()
+  :: (Universe u, Agent u ~ Astronomer)
+    => StateT (Experiment u) IO ()
 letSubjectReflect = do
   x <- use subject
-  assign subject (reflect x)
+  x' <- withUniverse (reflect x)
+  assign subject x'
