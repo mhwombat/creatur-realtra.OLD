@@ -32,7 +32,8 @@ import ALife.Creatur.Universe (Universe, Agent, writeToLog, popSize)
 import ALife.Creatur.Util (stateMap)
 import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
   chooseAction, randomWain, classify, teachLabel, incAge,
-  weanMatureChildren, tryMating, energy, passion, hasLitter, feedback)
+  weanMatureChildren, tryMating, energy, passion, hasLitter, feedback,
+  happiness)
 import ALife.Creatur.Wain.Brain (classifier)
 import ALife.Creatur.Wain.GeneticSOM (counterMap)
 import ALife.Creatur.Wain.Pretty (pretty)
@@ -224,7 +225,8 @@ run' = do
     ++ "'s summary: " ++ pretty (Stats.stats a)
   forage
   (imgLabel, action) <- chooseAction'
-  runActionObserveResult action imgLabel
+  runAction action imgLabel
+  letSubjectReflect
   adjustSubjectPassion
   when (hasLitter a) applyChildrearingCost
   wean
@@ -348,17 +350,6 @@ chooseObjects xs db = do
   -- withUniverse . writeToLog $ "Indirect object = " ++ objectId y
   (x:y:_) <- liftIO . randomlyInsertImages db . map AObject $ xs
   return (x, y)
-
-runActionObserveResult
-  :: (Universe u, Agent u ~ Astronomer)
-    => Action -> Label -> StateT (Experiment u) IO ()
-runActionObserveResult a l = do
-  before <- fmap energy $ use subject
-  runAction a l
-  after <- fmap energy $ use subject
-  w <- use subject
-  w' <- withUniverse $ feedback (after - before) w
-  assign subject w'
 
 runAction
   :: (Universe u, Agent u ~ Astronomer)
@@ -563,3 +554,8 @@ adjustSubjectPassion = do
   x <- use subject
   assign subject (adjustPassion x)
 
+letSubjectReflect
+  :: StateT (Experiment u) IO ()
+letSubjectReflect = do
+  x <- use subject
+  assign subject (reflect x)
