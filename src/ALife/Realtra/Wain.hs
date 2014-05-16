@@ -32,7 +32,7 @@ import ALife.Creatur.Universe (Universe, Agent, writeToLog, popSize)
 import ALife.Creatur.Util (stateMap)
 import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
   chooseAction, randomWain, classify, teachLabel, incAge,
-  weanMatureChildren, tryMating, energy, passion, hasLitter)
+  weanMatureChildren, tryMating, energy, passion, hasLitter, feedback)
 import ALife.Creatur.Wain.Brain (classifier)
 import ALife.Creatur.Wain.GeneticSOM (counterMap)
 import ALife.Creatur.Wain.Pretty (pretty)
@@ -356,7 +356,9 @@ runActionObserveResult a l = do
   before <- fmap energy $ use subject
   runAction a l
   after <- fmap energy $ use subject
-  withUniverse $ feedback (after - before)
+  w <- use subject
+  w' <- withUniverse $ feedback (after - before) w
+  assign subject w'
 
 runAction
   :: (Universe u, Agent u ~ Astronomer)
