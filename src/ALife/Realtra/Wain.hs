@@ -224,7 +224,7 @@ run' = do
     ++ "'s summary: " ++ pretty (Stats.stats a)
   forage
   (imgLabel, action) <- chooseAction'
-  runAction action imgLabel
+  runActionObserveResult action imgLabel
   adjustSubjectPassion
   when (hasLitter a) applyChildrearingCost
   wean
@@ -348,6 +348,15 @@ chooseObjects xs db = do
   -- withUniverse . writeToLog $ "Indirect object = " ++ objectId y
   (x:y:_) <- liftIO . randomlyInsertImages db . map AObject $ xs
   return (x, y)
+
+runActionObserveResult
+  :: (Universe u, Agent u ~ Astronomer)
+    => Action -> Label -> StateT (Experiment u) IO ()
+runActionObserveResult a l = do
+  before <- fmap energy $ use subject
+  runAction a l
+  after <- fmap energy $ use subject
+  withUniverse $ feedback (after - before)
 
 runAction
   :: (Universe u, Agent u ~ Astronomer)
