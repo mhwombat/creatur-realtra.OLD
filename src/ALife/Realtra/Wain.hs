@@ -28,14 +28,18 @@ module ALife.Realtra.Wain
 
 import ALife.Creatur (agentId)
 import ALife.Creatur.Database (size)
-import ALife.Creatur.Universe (Universe, Agent, writeToLog, popSize)
+import ALife.Creatur.Universe (Universe, Agent, writeToLog)
 import ALife.Creatur.Util (stateMap)
 import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
-  chooseAction, randomWain, classify, teachLabel, incAge,
-  weanMatureChildren, tryMating, energy, passion, hasLitter, reflect)
-import ALife.Creatur.Wain.Brain (classifier)
-import ALife.Creatur.Wain.GeneticSOM (counterMap)
+  chooseAction, buildWainAndGenerateGenome, classify, teachLabel,
+  incAge, weanMatureChildren, tryMating, energy, passion, hasLitter,
+  reflect)
+import ALife.Creatur.Wain.Brain (classifier, buildBrain)
+import ALife.Creatur.Wain.GeneticSOM (RandomDecayingGaussianParams(..),
+  randomDecayingGaussian, buildGeneticSOM, numModels, counterMap)
 import ALife.Creatur.Wain.Pretty (pretty)
+import ALife.Creatur.Wain.Response (Response, randomResponse, action)
+import ALife.Creatur.Wain.Util (unitInterval)
 import qualified ALife.Creatur.Wain.Statistics as Stats
 import ALife.Realtra.Action (Action(..))
 import ALife.Creatur.Wain.PersistentStatistics (updateStats, readStats,
@@ -45,7 +49,7 @@ import ALife.Realtra.ImageDB (ImageDB, anyImage)
 import Control.Lens hiding (Action, universe)
 import Control.Monad (replicateM, when)
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Random (Rand, RandomGen)
+import Control.Monad.Random (Rand, RandomGen, getRandomR)
 import Control.Monad.State.Lazy (StateT, execStateT, evalStateT, get)
 import Data.Word (Word8, Word16)
 -- import Factory.Math.Statistics (getStandardDeviation)
@@ -89,29 +93,61 @@ type Astronomer = Wain Image Action
 
 randomAstronomer
   :: RandomGen r
-    => String -> Int -> Int -> Word8 -> Word8 -> Word16 -> Rand r Astronomer
-randomAstronomer wainName w h classifierSize deciderSize mm = do
+    => String -> Config u -> Word8 -> Word8 -> Rand r Astronomer
+randomAstronomer wainName config classifierSize deciderSize = do
   let n = fromIntegral $ 3*classifierSize*classifierSize
-  let app = stripedImage w h
+  let w = imageWidth config
+  let h = imageWidth config
   imgs <- replicateM n (randomImage w h)
-  randomWain wainName app classifierSize imgs deciderSize mm
+  -- let fcp = randomDecayingGaussianParams classifierSize
+  let fcp = RandomDecayingGaussianParams
+               { r0Range = classifierR0Range config,
+                 rfRange = classifierRfRange config,
+                 w0Range = classifierW0Range config,
+                 wfRange = classifierWfRange config,
+                 tfRange = classifierTfRange config,
+                 sideLength = classifierSize }
+  fc <- randomDecayingGaussian fcp
+  let c = buildGeneticSOM classifierSize fc imgs
+  -- let fdp = randomDecayingGaussianParams deciderSize
+  let fdp = RandomDecayingGaussianParams
+              { r0Range = deciderR0Range config,
+                rfRange = deciderRfRange config,
+                w0Range = deciderW0Range config,
+                wfRange = deciderWfRange config,
+                tfRange = deciderTfRange config,
+                sideLength = deciderSize }
+  fd <- randomDecayingGaussian fdp
+  xs <- replicateM (numTiles . initialPopulationMaxDeciderSize $ config)
+         $ randomResponse (numModels c) 
+  let d = buildGeneticSOM deciderSize fd xs
+  let b = buildBrain c d
+  m <- getRandomR (0,initialPopulationMaxAgeOfMaturity config)
+  p <- getRandomR unitInterval
+  let app = stripedImage w h
+  return $ buildWainAndGenerateGenome wainName app b m p
+
+numTiles :: Word8 -> Int
+numTiles s = 3*s'*(s'-1) + 1
+  where s' = fromIntegral s
 
 data Config u = Config
   { universe :: u,
     statsFile :: FilePath,
     sleepBetweenTasks :: Int,
     imageDB :: ImageDB,
-    imageHeight :: Int,
     imageWidth :: Int,
+    imageHeight :: Int,
     initialPopulationMaxClassifierSize :: Word8,
     initialPopulationMaxDeciderSize :: Word8,
     initialPopulationMaxAgeOfMaturity :: Word16,
     initialPopulationSize :: Int,
+    minPopulationSize :: Int,
+    maxPopulationSize :: Int,
     baseMetabolismDeltaE :: Double,
     maxSizeBasedMetabolismDeltaE :: Double,
     childCostFactor :: Double,
-    foragingIndex :: Int,
-    maxPopulationSize :: Int,
+    -- foragingIndex :: Int,
     -- minCategories :: Int,
     maxCategories :: Int,
     maxSize :: Int,
@@ -119,27 +155,38 @@ data Config u = Config
     matingDeltaE :: Double,
     cooperationDeltaE :: Double,
     cooperationAgentAgreementDelta :: Double,
-    cooperationImageAgreementDelta :: Double
+    cooperationImageAgreementDelta :: Double,
+    classifierR0Range :: (Double,Double),
+    classifierRfRange :: (Double,Double),
+    classifierW0Range :: (Double,Double),
+    classifierWfRange :: (Double,Double),
+    classifierTfRange :: (Double,Double),
+    deciderR0Range :: (Double,Double),
+    deciderRfRange :: (Double,Double),
+    deciderW0Range :: (Double,Double),
+    deciderWfRange :: (Double,Double),
+    deciderTfRange :: (Double,Double)
   } deriving (Show, Eq)
 
 data Summary = Summary
   {
     _rSizeDeltaE :: Double,
     _rChildRearingDeltaE :: Double,
-    _rForagingDeltaE :: Double,
+    -- _rForagingDeltaE :: Double,
     _rCoopDeltaE :: Double,
     _rAgreementDeltaE :: Double,
     _rFlirtingDeltaE :: Double,
     _rMatingDeltaE :: Double,
     _rNetDeltaE :: Double,
-    _otherDeltaE :: Double,
-    _birthCount :: Int,
-    _weanCount :: Int,
-    _cooperateCount :: Int,
-    _agreeCount :: Int,
-    _flirtCount :: Int,
-    _mateCount :: Int,
-    _ignoreCount :: Int
+    _rOtherDeltaE :: Double,
+    _rErr :: Double,
+    _rBirthCount :: Int,
+    _rWeanCount :: Int,
+    _rCooperateCount :: Int,
+    _rAgreeCount :: Int,
+    _rFlirtCount :: Int,
+    _rMateCount :: Int,
+    _rIgnoreCount :: Int
   }
 makeLenses ''Summary
 
@@ -148,20 +195,21 @@ initSummary = Summary
   {
     _rSizeDeltaE = 0,
     _rChildRearingDeltaE = 0,
-    _rForagingDeltaE = 0,
+    -- _rForagingDeltaE = 0,
     _rCoopDeltaE = 0,
     _rAgreementDeltaE = 0,
     _rFlirtingDeltaE = 0,
     _rMatingDeltaE = 0,
     _rNetDeltaE = 0,
-    _otherDeltaE = 0,
-    _birthCount = 0,
-    _weanCount = 0,
-    _cooperateCount = 0,
-    _agreeCount = 0,
-    _flirtCount = 0,
-    _mateCount = 0,
-    _ignoreCount = 0
+    _rOtherDeltaE = 0,
+    _rErr = 0,
+    _rBirthCount = 0,
+    _rWeanCount = 0,
+    _rCooperateCount = 0,
+    _rAgreeCount = 0,
+    _rFlirtCount = 0,
+    _rMateCount = 0,
+    _rIgnoreCount = 0
   }
 
 summaryStats :: Summary -> [Stats.Statistic]
@@ -169,19 +217,21 @@ summaryStats r =
   [
     Stats.uiStat "size Δe" (view rSizeDeltaE r),
     Stats.uiStat "child rearing Δe" (view rChildRearingDeltaE r),
-    Stats.uiStat "foraging Δe" (view rForagingDeltaE r),
+    -- Stats.uiStat "foraging Δe" (view rForagingDeltaE r),
     Stats.uiStat "cooperation Δe" (view rCoopDeltaE r),
     Stats.uiStat "agreement Δe" (view rAgreementDeltaE r),
     Stats.uiStat "flirting Δe" (view rFlirtingDeltaE r),
     Stats.uiStat "mating Δe" (view rMatingDeltaE r),
     Stats.uiStat "net Δe" (view rNetDeltaE r),
-    Stats.iStat "bore" (view birthCount r),
-    Stats.iStat "weaned" (view weanCount r),
-    Stats.iStat "co-operated" (view cooperateCount r),
-    Stats.iStat "agreed" (view agreeCount r),
-    Stats.iStat "flirted" (view flirtCount r),
-    Stats.iStat "mated" (view mateCount r),
-    Stats.iStat "ignored" (view ignoreCount r)
+    Stats.uiStat "other Δe" (view rOtherDeltaE r),
+    Stats.uiStat "err" (view rErr r),
+    Stats.iStat "bore" (view rBirthCount r),
+    Stats.iStat "weaned" (view rWeanCount r),
+    Stats.iStat "co-operated" (view rCooperateCount r),
+    Stats.iStat "agreed" (view rAgreeCount r),
+    Stats.iStat "flirted" (view rFlirtCount r),
+    Stats.iStat "mated" (view rMateCount r),
+    Stats.iStat "ignored" (view rIgnoreCount r)
   ]
 
 data Experiment u = Experiment
@@ -222,10 +272,10 @@ run' = do
     ++ "'s turn ----------"
   withUniverse . writeToLog $ "At beginning of turn, " ++ agentId a
     ++ "'s summary: " ++ pretty (Stats.stats a)
-  forage
-  (imgLabel, action) <- chooseAction'
-  runAction action imgLabel
-  letSubjectReflect
+  -- forage
+  (imgLabel, r) <- chooseAction'
+  runAction (action r) imgLabel
+  letSubjectReflect r
   adjustSubjectPassion
   when (hasLitter a) applyChildrearingCost
   wean
@@ -272,19 +322,19 @@ childRearingCost :: Int -> Double -> Double -> Double -> Astronomer -> Double
 childRearingCost m b f x a = x * (sum . map g $ litter a)
     where g c = sizeCost m b f c
 
-forage :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()
-forage = do
-  n <- withUniverse popSize
-  mp <- fmap maxPopulationSize $ use config
-  k <- fmap foragingIndex $ use config
-  withUniverse . writeToLog $ "Pop. size=" ++ show n
-  let deltaE = foragingReward mp n k
-  adjustSubjectEnergy deltaE rForagingDeltaE "foraging"
+-- forage :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()
+-- forage = do
+--   n <- withUniverse popSize
+--   mp <- fmap maxPopulationSize $ use config
+--   k <- fmap foragingIndex $ use config
+--   withUniverse . writeToLog $ "Pop. size=" ++ show n
+--   let deltaE = foragingReward mp n k
+--   adjustSubjectEnergy deltaE rForagingDeltaE "foraging"
 
-foragingReward :: Int -> Int -> Int -> Double
-foragingReward mp n k = (2*(0.5 - n'/mp'))^k
-  where n' = fromIntegral n
-        mp' = fromIntegral mp
+-- foragingReward :: Int -> Int -> Int -> Double
+-- foragingReward mp n k = (2*(0.5 - n'/mp'))^k
+--   where n' = fromIntegral n
+--         mp' = fromIntegral mp
 
 schemaQuality :: Int -> Astronomer -> Double
 schemaQuality m
@@ -312,21 +362,22 @@ categoriesReallyUsed' m xs = length $ filter (>k) xs
 
 chooseAction'
   :: (Universe u, Agent u ~ Astronomer)
-    => StateT (Experiment u) IO (Label, Action)
+    => StateT (Experiment u) IO (Label, Response Action)
 chooseAction' = do
   a <- use subject
   dObj <- use directObject
   iObj <- use indirectObject
   withUniverse . writeToLog $ agentId a ++ " sees " ++ objectId dObj
     ++ " and " ++ objectId iObj
-  (imgLabel, action, a')
+  let (imgLabel, _) = classify (objectAppearance dObj) a
+  (r, a')
     <- withUniverse $
         chooseAction (objectAppearance dObj) (objectAppearance iObj) a
   withUniverse . writeToLog $ agentId a ++ " labels " ++ objectId dObj
     ++ " as " ++ show imgLabel ++ ", and chooses to "
-    ++ describe (objectId dObj) (objectId iObj) action
+    ++ describe (objectId dObj) (objectId iObj) (action r)
   assign subject a'
-  return (imgLabel, action)
+  return (imgLabel, r)
 
 incSubjectAge
   :: (Universe u, Agent u ~ Astronomer)
@@ -394,7 +445,7 @@ runAction Ignore _ = do
   a <- use subject
   dObj <- use directObject
   withUniverse . writeToLog $ agentId a ++ " ignores " ++ objectId dObj
-  (summary.ignoreCount) += 1
+  (summary.rIgnoreCount) += 1
 
 -- --
 -- -- Utility functions
@@ -440,7 +491,7 @@ applyCooperationEffects
 applyCooperationEffects = do
   deltaE <- fmap cooperationDeltaE $ use config
   adjustSubjectEnergy deltaE rCoopDeltaE "cooperation"
-  (summary.cooperateCount) += 1
+  (summary.rCooperateCount) += 1
 
 applyAgreementEffects
   :: (Universe u, Agent u ~ Astronomer)
@@ -453,7 +504,7 @@ applyAgreementEffects mc = do
   let deltaE = if (isImage b) then ia*sc else aa*sc
   adjustSubjectEnergy deltaE rAgreementDeltaE "agreement"
   adjustObjectEnergy indirectObject deltaE "agreement"
-  (summary.agreeCount) += 1
+  (summary.rAgreeCount) += 1
 
 flirt :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()
 flirt = do
@@ -471,7 +522,7 @@ flirt = do
 recordBirths :: StateT (Experiment u) IO ()
 recordBirths = do
   a <- use subject
-  (summary.birthCount) += length (litter a)
+  (summary.rBirthCount) += length (litter a)
 
 applyFlirtationEffects
   :: (Universe u, Agent u ~ Astronomer)
@@ -479,7 +530,7 @@ applyFlirtationEffects
 applyFlirtationEffects = do
   deltaE <- fmap flirtingDeltaE $ use config
   adjustSubjectEnergy deltaE rFlirtingDeltaE "flirting"
-  (summary.flirtCount) += 1
+  (summary.rFlirtCount) += 1
 
 applyMatingEffects
   :: (Universe u, Agent u ~ Astronomer)
@@ -488,14 +539,14 @@ applyMatingEffects = do
   deltaE <- fmap matingDeltaE $ use config
   adjustSubjectEnergy deltaE rMatingDeltaE "mating"
   adjustObjectEnergy directObject deltaE "mating"
-  (summary.mateCount) += 1
+  (summary.rMateCount) += 1
 
 wean :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()
 wean = do
   (a:as) <- use subject >>= withUniverse . weanMatureChildren
   assign subject a
   assign weanlings as
-  (summary.weanCount) += length as
+  (summary.rWeanCount) += length as
 
 withUniverse
   :: (Universe u, Agent u ~ Astronomer, Monad m)
@@ -537,7 +588,7 @@ adjustObjectEnergy objectSelector deltaE reason = do
   case x of
     AObject a -> do
       let before = energy a
-      (summary . otherDeltaE) += deltaE
+      (summary . rOtherDeltaE) += deltaE
       let a' = adjustEnergy deltaE a
       let after = energy a'
       assign objectSelector (AObject a')
@@ -555,8 +606,11 @@ adjustSubjectPassion = do
 
 letSubjectReflect
   :: (Universe u, Agent u ~ Astronomer)
-    => StateT (Experiment u) IO ()
-letSubjectReflect = do
+    => Response Action -> StateT (Experiment u) IO ()
+letSubjectReflect r = do
   x <- use subject
-  x' <- withUniverse (reflect x)
+  p1 <- fmap objectAppearance $ use directObject
+  p2 <- fmap objectAppearance $ use indirectObject
+  (x', err) <- withUniverse (reflect p1 p2 r x)
   assign subject x'
+  assign (summary . rErr) err

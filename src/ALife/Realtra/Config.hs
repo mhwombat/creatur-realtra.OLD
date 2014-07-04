@@ -62,20 +62,15 @@ config = Config
     -- The size of the initial population.
     initialPopulationSize = if onServer then 200 else 10,
 
-    -- The maximum population size.
-    -- As the population increases toward this limit, the metabolism
-    -- cost increases, ensuring that only the fittest individuals
-    -- survive.
-    -- Note: It's unlikely the population will actually reach this limit
-    -- (because the metabolism costs will be so high), so set this value
-    -- a bit higher than your desired maximum population.
-    maxPopulationSize = if onServer then 500 else 10,
+    -- The daemon will stop if the population falls below this amount.
+    -- This gives you a chance to analyse the problem and perhaps
+    -- adjust your configuration.
+    minPopulationSize = if onServer then 100 else 2,
 
-    -- -- The minimum number of categories /actually used/.
-    -- -- Note: It's unlikely the wains will actually this limit
-    -- -- (because the metabolism costs will be so high), so set this value
-    -- -- a bit lower than your desired minimum.
-    -- minCategories = 2, -- really want at least 4
+    -- The daemon will stop if the population rises above this amount.
+    -- This gives you a chance to analyse the problem and perhaps
+    -- adjust your configuration.
+    maxPopulationSize = if onServer then 1000 else 20,
 
     -- The maximum number of categories /actually used/.
     -- Note: It's unlikely the wains will actually this limit
@@ -112,13 +107,13 @@ config = Config
     -- You probably won't need to alter this field.
     childCostFactor = 0.2,
 
-    -- This must be an ODD integer >= 1. It is used to shape the
-    -- reward/cost function for foraging. Higher values mean that
-    -- rewards will be smaller except when the population is very near
-    -- zero, and costs will be smaller except when the population is
-    -- very near the maximum.
-    -- You probably won't need to alter this field.
-    foragingIndex = 3,
+    -- -- This must be an ODD integer >= 1. It is used to shape the
+    -- -- reward/cost function for foraging. Higher values mean that
+    -- -- rewards will be smaller except when the population is very near
+    -- -- zero, and costs will be smaller except when the population is
+    -- -- very near the maximum.
+    -- -- You probably won't need to alter this field.
+    -- foragingIndex = 3,
     
     --
     -- Rewards and penalties
@@ -159,7 +154,55 @@ config = Config
     -- *image*, their energy changes by this amount, multiplied by the
     -- quality of the overall classification schema.
     -- This is normally an energy GAIN, so it should be positive.
-    cooperationImageAgreementDelta = 1.0
+    cooperationImageAgreementDelta = 1.0,
+
+    -- The range of values allowed for r0 (the learning rate applied to
+    -- the BMU at time 0) in the learning function for the
+    -- classifier in the initial population.
+    classifierR0Range = (0, 1),
+
+    -- The range of values allowed for rf (the learning rate applied to
+    -- the BMU at time tf) in the learning function for the
+    -- classifier in the initial population.
+    classifierRfRange = (0, 1),
+
+    -- The range of values allowed for w0 (the neighbourhood width at
+    -- time 0) in the learning function for the
+    -- classifier in the initial population.
+    classifierW0Range = (0, 5),
+
+    -- The range of values allowed for wf (the neighbourhood width at
+    -- time tf) in the learning function for the
+    -- classifier in the initial population.
+    classifierWfRange = (0, 5),
+
+    -- The range of values allowed for tf (the time at which the learning
+    -- rate becomes negligible) in the learning function for the
+    -- classifier in the initial population.
+    classifierTfRange = (1, 10000),
+
+    -- The range of values allowed for r0 (the learning rate applied to
+    -- the BMU at time 0) in the learning function for the
+    -- decider in the initial population.
+    deciderR0Range = (0, 1),
+
+    -- The range of values allowed for rf (the learning rate applied to
+    -- the BMU at time tf) in the learning function for the
+    -- decider in the initial population.
+    deciderRfRange = (0, 1),
+
+    -- The range of values allowed for w0 (the neighbourhood width at
+    -- time 0) in the learning function for the
+    -- decider in the initial population.
+    deciderW0Range = (0, 5),
+
+    -- The range of values allowed for wf (the neighbourhood width at
+    -- time tf) in the learning function for the
+    -- decider in the initial population.
+    deciderWfRange = (0, 5),
+
+    -- The range of values allowed for tf (the time at which the learning
+    -- rate becomes negligible) in the learning function for the
+    -- decider in the initial population.
+    deciderTfRange = (1, 10000)
   }
-
-

@@ -14,7 +14,7 @@
 module Main where
 
 import ALife.Realtra.Wain (universe, sleepBetweenTasks, run,
-  finishRound, statsFile)
+  finishRound, statsFile, minPopulationSize, maxPopulationSize)
 import qualified ALife.Realtra.Config as Config
 import ALife.Creatur (programVersion)
 import ALife.Creatur.Daemon (Daemon(..), launch)
@@ -37,8 +37,10 @@ main :: IO ()
 main = launch daemon (universe Config.config)
   where program = run Config.config
         final = finishRound (statsFile Config.config)
+        popRange = ( minPopulationSize Config.config,
+                     maxPopulationSize Config.config )
         daemon = simpleDaemon
-                   {task=runInteractingAgents program 3 final,
+                   {task=runInteractingAgents program popRange final,
                     onStartup=startupHandler message,
                     onShutdown=shutdownHandler message,
                     sleepTime=sleepBetweenTasks Config.config}

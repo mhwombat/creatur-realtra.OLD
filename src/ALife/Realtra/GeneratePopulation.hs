@@ -15,8 +15,7 @@
 import ALife.Creatur (agentId)
 import ALife.Realtra.Wain (Astronomer, randomAstronomer, summarise,
   initialPopulationSize, initialPopulationMaxClassifierSize,
-  initialPopulationMaxDeciderSize, universe,
-  initialPopulationMaxAgeOfMaturity, imageWidth, imageHeight)
+  initialPopulationMaxDeciderSize, universe)
 import ALife.Creatur.Wain.Pretty (pretty)
 import ALife.Creatur.Wain.Statistics (Statistic, stats)
 import qualified ALife.Realtra.Config as Config
@@ -40,12 +39,10 @@ introduceRandomAgent name = do
   deciderSize
     <- liftIO . evalRandIO $
         getRandomR (1, initialPopulationMaxDeciderSize Config.config)
-  let w = imageWidth Config.config
-  let h = imageHeight Config.config
-  let mm = initialPopulationMaxAgeOfMaturity Config.config
   agent
     <- liftIO $
-        evalRandIO (randomAstronomer name w h classifierSize deciderSize mm)
+        evalRandIO ( randomAstronomer name Config.config classifierSize
+                     deciderSize )
   writeToLog $ "GeneratePopulation: Created " ++ agentId agent
   writeToLog $ "GeneratePopulation: Stats " ++ pretty (stats agent)
   store agent
