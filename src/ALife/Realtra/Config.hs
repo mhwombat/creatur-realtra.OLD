@@ -70,7 +70,7 @@ config = Config
     -- The daemon will stop if the population rises above this amount.
     -- This gives you a chance to analyse the problem and perhaps
     -- adjust your configuration.
-    maxPopulationSize = if onServer then 1000 else 20,
+    maxPopulationSize = if onServer then 1000 else 50,
 
     -- The maximum number of categories /actually used/.
     -- Note: It's unlikely the wains will actually this limit
