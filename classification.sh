@@ -1,2 +1,2 @@
 #!/bin/sh
-grep " agrees .* Image" ~/alife/gzoo1/log/GalaxyZoo.log* | sed 's/.* has label //' | sort | uniq -c
+grep " agrees .* Image" `./ordered-logs.sh` | sed 's/.* has label //' | sort | uniq -c

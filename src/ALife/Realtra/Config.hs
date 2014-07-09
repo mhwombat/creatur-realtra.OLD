@@ -28,8 +28,8 @@ config = Config
           "GalaxyZoo"             -- experiment name
           "/home/amy/alife/gzoo1" -- directory
           (if onServer            -- cache size (in bytes)
-             then 20000000       
-             else 10000000000),
+             then 10000000000
+             else 20000000),
     
     statsFile = "/home/amy/alife/gzoo1/stats",
 
