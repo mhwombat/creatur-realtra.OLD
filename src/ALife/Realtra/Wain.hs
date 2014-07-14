@@ -28,7 +28,8 @@ module ALife.Realtra.Wain
 
 import ALife.Creatur (agentId)
 import ALife.Creatur.Database (size)
-import ALife.Creatur.Universe (Universe, Agent, writeToLog)
+import ALife.Creatur.Universe (Universe, Agent, writeToLog,
+  withdrawEnergy)
 import ALife.Creatur.Util (stateMap)
 import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
   chooseAction, buildWainAndGenerateGenome, classify, teachLabel,
@@ -144,6 +145,7 @@ data Config u = Config
     initialPopulationSize :: Int,
     minPopulationSize :: Int,
     maxPopulationSize :: Int,
+    energyPoolSize :: Double,
     baseMetabolismDeltaE :: Double,
     maxSizeBasedMetabolismDeltaE :: Double,
     childCostFactor :: Double,
@@ -571,12 +573,13 @@ adjustSubjectEnergy
 adjustSubjectEnergy deltaE selector reason = do
   x <- use subject
   let before = energy x
-  assign (summary . selector) deltaE
-  assign subject (adjustEnergy deltaE x)
+  deltaE' <- adjustedDeltaE deltaE
+  assign (summary . selector) deltaE'
+  assign subject (adjustEnergy deltaE' x)
   after <- fmap energy $ use subject
   withUniverse . writeToLog $ "Adjusting energy of " ++ agentId x
     ++ " because of " ++ reason
-    ++ ". " ++ printf "%.3f" before ++ " + " ++ printf "%.3f" deltaE
+    ++ ". " ++ printf "%.3f" before ++ " + " ++ printf "%.3f" deltaE'
     ++ " = " ++ printf "%.3f" after
 
 adjustObjectEnergy
@@ -588,15 +591,29 @@ adjustObjectEnergy objectSelector deltaE reason = do
   case x of
     AObject a -> do
       let before = energy a
-      (summary . rOtherDeltaE) += deltaE
-      let a' = adjustEnergy deltaE a
+      deltaE' <- adjustedDeltaE deltaE
+      (summary . rOtherDeltaE) += deltaE'
+      let a' = adjustEnergy deltaE' a
       let after = energy a'
       assign objectSelector (AObject a')
       withUniverse . writeToLog $ "Adjusting energy of " ++ agentId a
         ++ " because of " ++ reason
-        ++ ". " ++ printf "%.3f" before ++ " + " ++ printf "%.3f" deltaE
-        ++ " = " ++ printf "%.3f" after
+        ++ ". " ++ printf "%.3f" before ++ " + "
+        ++ printf "%.3f" deltaE' ++ " = " ++ printf "%.3f" after
     IObject _ _ -> return ()
+
+adjustedDeltaE
+  :: (Universe u, Agent u ~ Astronomer)
+    => Double -> StateT (Experiment u) IO Double
+adjustedDeltaE deltaE =
+  if deltaE <= 0
+    then return deltaE
+    else do
+      deltaE' <- withUniverse (withdrawEnergy deltaE)
+      when (deltaE' < deltaE) $ do
+        withUniverse . writeToLog $ "Energy pool exhausted, only "
+          ++ show deltaE' ++ " available"
+      return deltaE'
 
 adjustSubjectPassion
   :: StateT (Experiment u) IO ()

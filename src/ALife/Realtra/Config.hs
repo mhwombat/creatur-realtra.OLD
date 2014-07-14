@@ -30,7 +30,7 @@ config = Config
           (if onServer            -- cache size (in bytes)
              then 10000000000
              else 20000000),
-    
+
     statsFile = "/home/amy/alife/gzoo1/stats",
 
     -- Number of microseconds to sleep after each agent gets its turn
@@ -61,6 +61,8 @@ config = Config
 
     -- The size of the initial population.
     initialPopulationSize = if onServer then 200 else 10,
+
+    energyPoolSize = if onServer then 200*0.1 else 10*0.1,
 
     -- The daemon will stop if the population falls below this amount.
     -- This gives you a chance to analyse the problem and perhaps
