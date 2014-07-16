@@ -28,8 +28,7 @@ module ALife.Realtra.Wain
 
 import ALife.Creatur (agentId)
 import ALife.Creatur.Database (size)
-import ALife.Creatur.Universe (Universe, Agent, writeToLog,
-  withdrawEnergy)
+import ALife.Creatur.Universe (Universe, Agent, writeToLog, popSize)
 import ALife.Creatur.Util (stateMap)
 import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
   chooseAction, buildWainAndGenerateGenome, classify, teachLabel,
@@ -144,8 +143,8 @@ data Config u = Config
     initialPopulationMaxAgeOfMaturity :: Word16,
     initialPopulationSize :: Int,
     minPopulationSize :: Int,
+    idealPopulationSize :: Int,
     maxPopulationSize :: Int,
-    energyPoolSize :: Double,
     baseMetabolismDeltaE :: Double,
     maxSizeBasedMetabolismDeltaE :: Double,
     childCostFactor :: Double,
@@ -609,11 +608,9 @@ adjustedDeltaE deltaE =
   if deltaE <= 0
     then return deltaE
     else do
-      deltaE' <- withUniverse (withdrawEnergy deltaE)
-      when (deltaE' < deltaE) $ do
-        withUniverse . writeToLog $ "Energy pool exhausted, only "
-          ++ show deltaE' ++ " available"
-      return deltaE'
+      n <- withUniverse popSize
+      nIdeal <- fmap idealPopulationSize $ use config
+      return $ deltaE * (fromIntegral nIdeal / fromIntegral n)
 
 adjustSubjectPassion
   :: StateT (Experiment u) IO ()

@@ -62,17 +62,19 @@ config = Config
     -- The size of the initial population.
     initialPopulationSize = if onServer then 200 else 10,
 
-    energyPoolSize = if onServer then 500*0.1 else 10*0.1,
+    -- The daemon will adjust energy rewards so as to nudge the
+    -- population size closer to the ideal.
+    idealPopulationSize = if onServer then 200 else 10,
 
     -- The daemon will stop if the population falls below this amount.
     -- This gives you a chance to analyse the problem and perhaps
     -- adjust your configuration.
-    minPopulationSize = if onServer then 100 else 2,
+    minPopulationSize = if onServer then 100 else 5,
 
     -- The daemon will stop if the population rises above this amount.
     -- This gives you a chance to analyse the problem and perhaps
     -- adjust your configuration.
-    maxPopulationSize = if onServer then 1000 else 50,
+    maxPopulationSize = if onServer then 1000 else 20,
 
     -- The maximum number of categories /actually used/.
     -- Note: It's unlikely the wains will actually this limit
