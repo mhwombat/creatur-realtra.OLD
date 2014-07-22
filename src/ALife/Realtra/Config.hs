@@ -82,26 +82,21 @@ config = Config
     -- a bit higher than your desired maximum.
     maxCategories = 50,
 
-    -- The maximum agent size to allow.
-    -- Most of an agent's size is taken up by its brain, so the agent's size
-    -- can be used as a proxy for its CPU usage.
-    -- Note: It's unlikely the wains will actually this limit
-    -- (because the metabolism costs will be so high), so set this value
-    -- a bit higher than your desired maximum.
-    maxSize = 500000,
-
     -- To ensure that smaller agents don't have an excessive advantage
     -- over larger agents, part of the metabolic cost is fixed.
     -- Compare with maxSizeBasedMetabolismDeltaE.
-    -- You probably won't need to alter this field.
+    -- Initially, you may want to set this to a small value
+    -- (e.g. -0.001) to give the wains a chance to learn, and then make
+    -- the cost higher (e.g., -0.1).
     -- This is normally an energy LOSS, so it should be negative.
-    baseMetabolismDeltaE = -0.05,
+    baseMetabolismDeltaE = -0.001,
 
     -- To ensure that agents use resources efficiently, part of their
     -- metabolic cost is based on their size.
-    -- You probably won't need to alter this field.
+    -- If you don't know what value to use, multiply the average size
+    -- of your initial population by -0.001 and use that.
     -- This is normally an energy LOSS, so it should be negative.
-    maxSizeBasedMetabolismDeltaE = -0.05,
+    energyCostPerByte = -0.00000001,
 
     -- A wain rearing a child pays a fraction of the metabolic cost
     -- that the child would pay if it were full-grown. It's only a

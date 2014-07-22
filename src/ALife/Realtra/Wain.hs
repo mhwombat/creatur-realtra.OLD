@@ -146,12 +146,10 @@ data Config u = Config
     idealPopulationSize :: Int,
     maxPopulationSize :: Int,
     baseMetabolismDeltaE :: Double,
-    maxSizeBasedMetabolismDeltaE :: Double,
+    energyCostPerByte :: Double,
     childCostFactor :: Double,
-    -- foragingIndex :: Int,
     -- minCategories :: Int,
     maxCategories :: Int,
-    maxSize :: Int,
     flirtingDeltaE :: Double,
     matingDeltaE :: Double,
     cooperationDeltaE :: Double,
@@ -296,10 +294,9 @@ applySizeCost
     => StateT (Experiment u) IO ()
 applySizeCost = do
   a <- use subject
-  ms <- fmap maxSize $ use config
   bms <- fmap baseMetabolismDeltaE $ use config
-  msbmc <- fmap maxSizeBasedMetabolismDeltaE $ use config
-  let deltaE = sizeCost ms bms msbmc a
+  cps <- fmap energyCostPerByte $ use config
+  let deltaE = sizeCost bms cps a
   adjustSubjectEnergy deltaE rSizeDeltaE "size"
 
 applyChildrearingCost
@@ -308,20 +305,18 @@ applyChildrearingCost
 applyChildrearingCost = do
   a <- use subject
   ccf <- fmap childCostFactor $ use config
-  ms <- fmap maxSize $ use config
   bms <- fmap baseMetabolismDeltaE $ use config
-  msbmc <- fmap maxSizeBasedMetabolismDeltaE $ use config
-  let deltaE = childRearingCost ms bms msbmc ccf a
+  cps <- fmap energyCostPerByte $ use config
+  let deltaE = childRearingCost bms cps ccf a
   adjustSubjectEnergy deltaE rChildRearingDeltaE "child rearing"
 
-sizeCost :: Int -> Double -> Double -> Astronomer -> Double
-sizeCost m b f a = b + f*s/m'
+sizeCost :: Double -> Double -> Astronomer -> Double
+sizeCost b f a = b + f*s
   where s = fromIntegral (size a)
-        m' = fromIntegral m
 
-childRearingCost :: Int -> Double -> Double -> Double -> Astronomer -> Double
-childRearingCost m b f x a = x * (sum . map g $ litter a)
-    where g c = sizeCost m b f c
+childRearingCost :: Double -> Double -> Double -> Astronomer -> Double
+childRearingCost b f x a = x * (sum . map g $ litter a)
+    where g c = sizeCost b f c
 
 -- forage :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()
 -- forage = do
