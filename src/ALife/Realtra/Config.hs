@@ -62,9 +62,7 @@ config = Config
     -- The size of the initial population.
     initialPopulationSize = if onServer then 200 else 10,
 
-    -- The daemon will adjust energy rewards so as to nudge the
-    -- population size closer to the ideal.
-    idealPopulationSize = if onServer then 200 else 10,
+    energyPoolSize = if onServer then 200*0.1 else 10*0.1,
 
     -- The daemon will stop if the population falls below this amount.
     -- This gives you a chance to analyse the problem and perhaps
@@ -106,19 +104,9 @@ config = Config
     -- You probably won't need to alter this field.
     childCostFactor = 0.2,
 
-    -- -- This must be an ODD integer >= 1. It is used to shape the
-    -- -- reward/cost function for foraging. Higher values mean that
-    -- -- rewards will be smaller except when the population is very near
-    -- -- zero, and costs will be smaller except when the population is
-    -- -- very near the maximum.
-    -- -- You probably won't need to alter this field.
-    -- foragingIndex = 3,
-    
     --
     -- Rewards and penalties
     --
-
-    -- TODO MAKE CODE CONSISTENT WITH WHAT I WROTE IN THE THESIS.
 
     -- *** Controlling the frequency of flirting
 
