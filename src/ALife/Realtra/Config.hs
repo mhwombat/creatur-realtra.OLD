@@ -62,7 +62,7 @@ config = Config
     -- The size of the initial population.
     initialPopulationSize = if onServer then 200 else 10,
 
-    energyPoolSize = if onServer then 200*0.1 else 10*0.1,
+    energyPoolSize = if onServer then 500*0.1 else 10*0.1,
 
     -- The daemon will stop if the population falls below this amount.
     -- This gives you a chance to analyse the problem and perhaps
