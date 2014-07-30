@@ -16,6 +16,7 @@ import ALife.Creatur (agentId)
 import ALife.Realtra.Wain (Astronomer, randomAstronomer, summarise,
   initialPopulationSize, initialPopulationMaxClassifierSize,
   initialPopulationMaxDeciderSize, universe)
+import ALife.Creatur.Wain (adjustEnergy)
 import ALife.Creatur.Wain.Pretty (pretty)
 import ALife.Creatur.Wain.Statistics (Statistic, stats)
 import qualified ALife.Realtra.Config as Config
@@ -39,8 +40,10 @@ introduceRandomAgent name = do
   deciderSize
     <- liftIO . evalRandIO $
         getRandomR (1, initialPopulationMaxDeciderSize Config.config)
+  -- Make the first generation a little hungry so they start learning
+  -- immediately.
   agent
-    <- liftIO $
+    <- fmap (adjustEnergy (-0.1)) . liftIO $
         evalRandIO ( randomAstronomer name Config.config classifierSize
                      deciderSize )
   writeToLog $ "GeneratePopulation: Created " ++ agentId agent
