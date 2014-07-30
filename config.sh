@@ -1,4 +1,5 @@
 #!/bin/sh
-export logdir=~/alife/gzoo1/log
+export alifedir=~/alife/gzoo1
+export logdir=${alifedir}/log
 export logname=GalaxyZoo.log
 export log=${logdir}/${logname}

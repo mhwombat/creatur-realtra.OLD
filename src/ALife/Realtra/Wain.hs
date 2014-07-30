@@ -287,6 +287,8 @@ run' = do
   a' <- use subject
   withUniverse . writeToLog $ "End of " ++ agentId a ++ "'s turn"
   assign (summary.rNetDeltaE) (energy a' - energy a)
+  mc <- fmap maxCategories $ use config
+  assign (summary.rSchemaQuality) (schemaQuality mc a')
   sf <- fmap statsFile $ use config
   agentStats <- fmap ((Stats.stats a' ++) . summaryStats) $ use summary
   withUniverse . writeToLog $ "At end of turn, " ++ agentId a
