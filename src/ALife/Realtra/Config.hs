@@ -84,7 +84,7 @@ config = Config
     -- over larger agents, part of the metabolic cost is fixed.
     -- Compare with maxSizeBasedMetabolismDeltaE.
     -- This is normally an energy LOSS, so it should be negative.
-    baseMetabolismDeltaE = -0.001,
+    baseMetabolismDeltaE = -0.1,
 
     -- To ensure that agents use resources efficiently, part of their
     -- metabolic cost is based on their size.
