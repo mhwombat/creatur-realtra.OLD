@@ -83,9 +83,6 @@ config = Config
     -- To ensure that smaller agents don't have an excessive advantage
     -- over larger agents, part of the metabolic cost is fixed.
     -- Compare with maxSizeBasedMetabolismDeltaE.
-    -- Initially, you may want to set this to a small value
-    -- (e.g. -0.001) to give the wains a chance to learn, and then make
-    -- the cost higher (e.g., -0.1).
     -- This is normally an energy LOSS, so it should be negative.
     baseMetabolismDeltaE = -0.001,
 
