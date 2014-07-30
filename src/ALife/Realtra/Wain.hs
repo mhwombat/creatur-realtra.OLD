@@ -499,8 +499,11 @@ applyAgreementEffects mc = do
   ia <- fmap cooperationImageAgreementDelta $ use config
   sc <- fmap (schemaQuality mc) $ use subject
   let deltaE = if (isImage b) then ia*sc else aa*sc
-  adjustSubjectEnergy deltaE rAgreementDeltaE "agreement"
-  adjustObjectEnergy indirectObject deltaE "agreement"
+  let reason = if (isImage b)
+                 then "agreed about image"
+                 else "agreed about agent"
+  adjustSubjectEnergy deltaE rAgreementDeltaE reason
+  adjustObjectEnergy indirectObject deltaE reason
   (summary.rAgreeCount) += 1
 
 flirt :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()

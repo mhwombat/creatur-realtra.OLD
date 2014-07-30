@@ -60,9 +60,9 @@ config = Config
     initialPopulationMaxAgeOfMaturity = if onServer then 100 else 2,
 
     -- The size of the initial population.
-    initialPopulationSize = if onServer then 200 else 10,
+    initialPopulationSize = if onServer then 500 else 10,
 
-    energyPoolSize = if onServer then 500*0.1 else 10*0.1,
+    energyPoolSize = if onServer then 300*0.1 else 10*0.1,
 
     -- The daemon will stop if the population falls below this amount.
     -- This gives you a chance to analyse the problem and perhaps
@@ -72,7 +72,7 @@ config = Config
     -- The daemon will stop if the population rises above this amount.
     -- This gives you a chance to analyse the problem and perhaps
     -- adjust your configuration.
-    maxPopulationSize = if onServer then 1000 else 20,
+    maxPopulationSize = if onServer then 800 else 20,
 
     -- The maximum number of categories /actually used/.
     -- Note: It's unlikely the wains will actually this limit
@@ -112,7 +112,7 @@ config = Config
 
     -- Every time an agent flirts, its energy changes by a fixed amount.
     -- This is normally an energy LOSS, so it should be negative.
-    flirtingDeltaE = -0.01,
+    flirtingDeltaE = -0.1,
 
     -- Note: Passion is reset to zero after mating.
 
@@ -120,7 +120,7 @@ config = Config
 
     -- Every time an agent mates, its energy changes by a fixed amount.
     -- This is normally an energy LOSS, so it should be negative.
-    matingDeltaE = -0.01,
+    matingDeltaE = -0.1,
 
     -- Note: Passion is reset to zero after mating.
 
@@ -135,7 +135,7 @@ config = Config
     -- *agent*, their energy changes by this amount, multiplied by the
     -- quality of the overall classification schema.
     -- This is normally an energy GAIN, so it should be positive.
-    cooperationAgentAgreementDelta = 0.01,
+    cooperationAgentAgreementDelta = 0.1,
 
     -- When two agents co-operate, and agree on a classification of an
     -- *image*, their energy changes by this amount, multiplied by the
