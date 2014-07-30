@@ -170,6 +170,7 @@ data Config u = Config
 
 data Summary = Summary
   {
+    _rSchemaQuality :: Double,
     _rSizeDeltaE :: Double,
     _rChildRearingDeltaE :: Double,
     -- _rForagingDeltaE :: Double,
@@ -193,6 +194,7 @@ makeLenses ''Summary
 initSummary :: Summary
 initSummary = Summary
   {
+    _rSchemaQuality = 0,
     _rSizeDeltaE = 0,
     _rChildRearingDeltaE = 0,
     -- _rForagingDeltaE = 0,
@@ -215,6 +217,7 @@ initSummary = Summary
 summaryStats :: Summary -> [Stats.Statistic]
 summaryStats r =
   [
+    Stats.uiStat "SQ" (view rSchemaQuality r),
     Stats.uiStat "size Δe" (view rSizeDeltaE r),
     Stats.uiStat "child rearing Δe" (view rChildRearingDeltaE r),
     -- Stats.uiStat "foraging Δe" (view rForagingDeltaE r),
