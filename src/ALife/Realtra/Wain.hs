@@ -29,7 +29,7 @@ module ALife.Realtra.Wain
 import ALife.Creatur (agentId)
 import ALife.Creatur.Database (size)
 import ALife.Creatur.Universe (Universe, Agent, writeToLog,
-  withdrawEnergy)
+  withdrawEnergy, currentTime)
 import ALife.Creatur.Util (stateMap)
 import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
   chooseAction, buildWainAndGenerateGenome, classify, teachLabel,
@@ -149,6 +149,7 @@ data Config u = Config
     baseMetabolismDeltaE :: Double,
     energyCostPerByte :: Double,
     childCostFactor :: Double,
+    easementTime :: Int,
     -- minCategories :: Int,
     maxCategories :: Int,
     flirtingDeltaE :: Double,
@@ -503,13 +504,28 @@ applyAgreementEffects mc = do
   aa <- fmap cooperationAgentAgreementDelta $ use config
   ia <- fmap cooperationImageAgreementDelta $ use config
   sc <- fmap (schemaQuality mc) $ use subject
-  let deltaE = if (isImage b) then ia*sc else aa*sc
+  t0 <- fmap easementTime $ use config
+  t <- withUniverse currentTime
+  let f = easeInto t0 sc t
+  let deltaE = if (isImage b) then ia*f else aa*f
+  withUniverse . writeToLog $ "DEBUG f=" ++ show f ++ " deltaE=" ++ show deltaE
   let reason = if (isImage b)
                  then "agreed about image"
                  else "agreed about agent"
   adjustSubjectEnergy deltaE rAgreementDeltaE reason
   adjustObjectEnergy indirectObject deltaE reason
   (summary.rAgreeCount) += 1
+
+-- | The first generation of wains needs some time to build up their
+--   schema quality.
+easeInto :: Int -> Double -> Int -> Double
+easeInto t0 f t =
+  if t <= t0
+    then m * t' + 1
+    else f
+  where m = (f - 1)/t0'
+        t0' = fromIntegral t0
+        t' = fromIntegral t
 
 flirt :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()
 flirt = do
