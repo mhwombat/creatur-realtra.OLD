@@ -62,7 +62,7 @@ config = Config
     -- The size of the initial population.
     initialPopulationSize = if onServer then 500 else 10,
 
-    energyPoolSize = if onServer then 300 else 10,
+    energyPoolSize = if onServer then 16 else 5,
 
     -- The daemon will stop if the population falls below this amount.
     -- This gives you a chance to analyse the problem and perhaps
@@ -84,14 +84,14 @@ config = Config
     -- over larger agents, part of the metabolic cost is fixed.
     -- Compare with maxSizeBasedMetabolismDeltaE.
     -- This is normally an energy LOSS, so it should be negative.
-    baseMetabolismDeltaE = -0.1,
+    baseMetabolismDeltaE = -0.05,
 
     -- To ensure that agents use resources efficiently, part of their
     -- metabolic cost is based on their size.
     -- If you don't know what value to use, multiply the average size
     -- of your initial population by -0.001 and use that.
     -- This is normally an energy LOSS, so it should be negative.
-    energyCostPerByte = -0.00000001,
+    energyCostPerByte = -0.0000005,
 
     -- A wain rearing a child pays a fraction of the metabolic cost
     -- that the child would pay if it were full-grown. It's only a
@@ -101,13 +101,14 @@ config = Config
     -- You probably won't need to alter this field.
     childCostFactor = 0.2,
 
-    easementTime = 50,
+    easementTime = 100,
+    easementAgreementBonus = 0.25,
 
     -- *** Controlling the frequency of flirting
 
     -- Every time an agent flirts, its energy changes by a fixed amount.
     -- This is normally an energy LOSS, so it should be negative.
-    flirtingDeltaE = -0.1,
+    flirtingDeltaE = -0.05,
 
     -- Note: Passion is reset to zero after mating.
 
@@ -115,7 +116,7 @@ config = Config
 
     -- Every time an agent mates, its energy changes by a fixed amount.
     -- This is normally an energy LOSS, so it should be negative.
-    matingDeltaE = -0.1,
+    matingDeltaE = -0.05,
 
     -- Note: Passion is reset to zero after mating.
 
@@ -124,7 +125,7 @@ config = Config
     -- When an agent initiates co-operation (trading classifications), its
     -- energy changes by a fixed amount.
     -- This is normally an energy LOSS, so it should be negative.
-    cooperationDeltaE = -0.01,
+    cooperationDeltaE = 0, -- -0.01,
 
     -- When two agents co-operate, and agree on a classification of an
     -- *agent*, their energy changes by this amount, multiplied by the

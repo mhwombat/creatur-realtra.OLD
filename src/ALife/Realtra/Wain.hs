@@ -150,6 +150,7 @@ data Config u = Config
     energyCostPerByte :: Double,
     childCostFactor :: Double,
     easementTime :: Int,
+    easementAgreementBonus :: Double,
     -- minCategories :: Int,
     maxCategories :: Int,
     flirtingDeltaE :: Double,
@@ -174,7 +175,6 @@ data Summary = Summary
     _rSchemaQuality :: Double,
     _rSizeDeltaE :: Double,
     _rChildRearingDeltaE :: Double,
-    -- _rForagingDeltaE :: Double,
     _rCoopDeltaE :: Double,
     _rAgreementDeltaE :: Double,
     _rFlirtingDeltaE :: Double,
@@ -189,6 +189,7 @@ data Summary = Summary
     _rFlirtCount :: Int,
     _rMateCount :: Int,
     _rIgnoreCount :: Int
+    -- _rScore :: Double
   }
 makeLenses ''Summary
 
@@ -198,7 +199,6 @@ initSummary = Summary
     _rSchemaQuality = 0,
     _rSizeDeltaE = 0,
     _rChildRearingDeltaE = 0,
-    -- _rForagingDeltaE = 0,
     _rCoopDeltaE = 0,
     _rAgreementDeltaE = 0,
     _rFlirtingDeltaE = 0,
@@ -213,6 +213,7 @@ initSummary = Summary
     _rFlirtCount = 0,
     _rMateCount = 0,
     _rIgnoreCount = 0
+    -- _rScore = 0
   }
 
 summaryStats :: Summary -> [Stats.Statistic]
@@ -221,7 +222,6 @@ summaryStats r =
     Stats.uiStat "SQ" (view rSchemaQuality r),
     Stats.uiStat "size Δe" (view rSizeDeltaE r),
     Stats.uiStat "child rearing Δe" (view rChildRearingDeltaE r),
-    -- Stats.uiStat "foraging Δe" (view rForagingDeltaE r),
     Stats.uiStat "cooperation Δe" (view rCoopDeltaE r),
     Stats.uiStat "agreement Δe" (view rAgreementDeltaE r),
     Stats.uiStat "flirting Δe" (view rFlirtingDeltaE r),
@@ -236,6 +236,7 @@ summaryStats r =
     Stats.iStat "flirted" (view rFlirtCount r),
     Stats.iStat "mated" (view rMateCount r),
     Stats.iStat "ignored" (view rIgnoreCount r)
+    -- Stats.iStat "score" (view rScore r)
   ]
 
 data Experiment u = Experiment
@@ -469,6 +470,7 @@ agree label = do
   assign indirectObject (AObject b')
   mc <- fmap maxCategories $ use config
   applyAgreementEffects mc
+  applyEarlyAgreementEffects
 
 -- TODO: factor out common code in agree, disagree
   
@@ -504,28 +506,28 @@ applyAgreementEffects mc = do
   aa <- fmap cooperationAgentAgreementDelta $ use config
   ia <- fmap cooperationImageAgreementDelta $ use config
   sc <- fmap (schemaQuality mc) $ use subject
-  t0 <- fmap easementTime $ use config
-  t <- withUniverse currentTime
-  let f = easeInto t0 sc t
-  let deltaE = if (isImage b) then ia*f else aa*f
-  withUniverse . writeToLog $ "DEBUG f=" ++ show f ++ " deltaE=" ++ show deltaE
+  let deltaE = if (isImage b) then ia*sc else aa*sc
   let reason = if (isImage b)
-                 then "agreed about image"
-                 else "agreed about agent"
+                 then "image agreement"
+                 else "agent agreement"
   adjustSubjectEnergy deltaE rAgreementDeltaE reason
   adjustObjectEnergy indirectObject deltaE reason
   (summary.rAgreeCount) += 1
 
--- | The first generation of wains needs some time to build up their
---   schema quality.
-easeInto :: Int -> Double -> Int -> Double
-easeInto t0 f t =
-  if t <= t0
-    then m * t' + 1
-    else f
-  where m = (f - 1)/t0'
-        t0' = fromIntegral t0
-        t' = fromIntegral t
+-- | The first generation of wains gets a bonus to buy them some time
+--   to learn about the universe.
+applyEarlyAgreementEffects
+  :: (Universe u, Agent u ~ Astronomer)
+    => StateT (Experiment u) IO ()
+applyEarlyAgreementEffects = do
+  t0 <- fmap (fromIntegral . easementTime) $ use config
+  t <- fmap fromIntegral $ withUniverse currentTime
+  when (t < t0) $ do
+    eab <- fmap easementAgreementBonus $ use config
+    let bonus = eab*(t0 - t)/t0
+    let reason = "early agreement bonus"
+    adjustSubjectEnergy bonus rAgreementDeltaE reason
+    adjustObjectEnergy indirectObject bonus reason
 
 flirt :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()
 flirt = do
