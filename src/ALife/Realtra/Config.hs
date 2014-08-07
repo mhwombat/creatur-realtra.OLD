@@ -47,7 +47,7 @@ config = Config
     -- setting below controls the maximum length of one side of the
     -- grid, for the /initial/ population. The processing time required
     -- is proportional to the square of this value.
-    initialPopulationMaxClassifierSize = 5,
+    initialPopulationMaxClassifierSize = if onServer then 5 else 3,
 
     -- The decider portion of a wain's brain is also a SOM, using a
     -- hexagonal grid with hexagonal tiles. The setting below controls
@@ -67,7 +67,7 @@ config = Config
     -- The daemon will stop if the population falls below this amount.
     -- This gives you a chance to analyse the problem and perhaps
     -- adjust your configuration.
-    minPopulationSize = if onServer then 100 else 5,
+    minPopulationSize = if onServer then 100 else 2,
 
     -- The daemon will stop if the population rises above this amount.
     -- This gives you a chance to analyse the problem and perhaps
@@ -102,6 +102,7 @@ config = Config
     childCostFactor = 0.2,
 
     easementTime = 100,
+    easementCooperationBonus = 0.05,
     easementAgreementBonus = 0.25,
 
     -- *** Controlling the frequency of flirting
@@ -125,7 +126,7 @@ config = Config
     -- When an agent initiates co-operation (trading classifications), its
     -- energy changes by a fixed amount.
     -- This is normally an energy LOSS, so it should be negative.
-    cooperationDeltaE = 0, -- -0.01,
+    cooperationDeltaE = -0.01,
 
     -- When two agents co-operate, and agree on a classification of an
     -- *agent*, their energy changes by this amount, multiplied by the

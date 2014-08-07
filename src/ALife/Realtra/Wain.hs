@@ -150,6 +150,7 @@ data Config u = Config
     energyCostPerByte :: Double,
     childCostFactor :: Double,
     easementTime :: Int,
+    easementCooperationBonus :: Double,
     easementAgreementBonus :: Double,
     -- minCategories :: Int,
     maxCategories :: Int,
@@ -414,6 +415,7 @@ runAction
 --
 runAction Cooperate aLabel = do
   applyCooperationEffects
+  applyEarlyCooperationEffects
   a <- use subject
   dObj <- use directObject
   iObj <- use indirectObject
@@ -497,6 +499,18 @@ applyCooperationEffects = do
   deltaE <- fmap cooperationDeltaE $ use config
   adjustSubjectEnergy deltaE rCoopDeltaE "cooperation"
   (summary.rCooperateCount) += 1
+
+applyEarlyCooperationEffects
+  :: (Universe u, Agent u ~ Astronomer)
+    => StateT (Experiment u) IO ()
+applyEarlyCooperationEffects = do
+  t0 <- fmap (fromIntegral . easementTime) $ use config
+  t <- fmap fromIntegral $ withUniverse currentTime
+  when (t < t0) $ do
+    eab <- fmap easementCooperationBonus $ use config
+    let bonus = eab*(t0 - t)/t0
+    let reason = "early cooperation bonus"
+    adjustSubjectEnergy bonus rCoopDeltaE reason
 
 applyAgreementEffects
   :: (Universe u, Agent u ~ Astronomer)
@@ -595,7 +609,8 @@ adjustSubjectEnergy deltaE selector reason = do
   x <- use subject
   let before = energy x
   deltaE' <- adjustedDeltaE deltaE
-  assign (summary . selector) deltaE'
+  -- assign (summary . selector) deltaE'
+  (summary . selector) += deltaE'
   assign subject (adjustEnergy deltaE' x)
   after <- fmap energy $ use subject
   withUniverse . writeToLog $ "Adjusting energy of " ++ agentId x
