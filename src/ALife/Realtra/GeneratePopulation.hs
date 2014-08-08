@@ -36,10 +36,10 @@ introduceRandomAgent
 introduceRandomAgent name = do
   classifierSize
     <- liftIO . evalRandIO $
-        getRandomR (1, initialPopulationMaxClassifierSize Config.config)
+        getRandomR (2, initialPopulationMaxClassifierSize Config.config)
   deciderSize
     <- liftIO . evalRandIO $
-        getRandomR (1, initialPopulationMaxDeciderSize Config.config)
+        getRandomR (2, initialPopulationMaxDeciderSize Config.config)
   -- Make the first generation a little hungry so they start learning
   -- immediately.
   agent
