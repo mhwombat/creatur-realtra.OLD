@@ -29,7 +29,7 @@ module ALife.Realtra.Wain
 import ALife.Creatur (agentId)
 import ALife.Creatur.Database (size)
 import ALife.Creatur.Universe (Universe, Agent, writeToLog,
-  withdrawEnergy, currentTime)
+  withdrawEnergy, currentTime, popSize)
 import ALife.Creatur.Util (stateMap)
 import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
   chooseAction, buildWainAndGenerateGenome, classify, teachLabel,
@@ -39,6 +39,7 @@ import ALife.Creatur.Wain.Brain (classifier, buildBrain)
 import ALife.Creatur.Wain.GeneticSOM (RandomDecayingGaussianParams(..),
   randomDecayingGaussian, buildGeneticSOM, numModels, counterMap)
 import ALife.Creatur.Wain.Pretty (pretty)
+import ALife.Creatur.Wain.Raw (raw)
 import ALife.Creatur.Wain.Response (Response, randomResponse, action)
 import ALife.Creatur.Wain.Util (unitInterval)
 import qualified ALife.Creatur.Wain.Statistics as Stats
@@ -55,6 +56,8 @@ import Control.Monad.State.Lazy (StateT, execStateT, evalStateT, get)
 import Data.Word (Word8, Word16)
 -- import Factory.Math.Statistics (getStandardDeviation)
 import Math.Geometry.GridMap (elems)
+import System.Directory (createDirectoryIfMissing)
+import System.FilePath (dropFileName)
 import System.Random (randomIO, randomRIO)
 import Text.Printf (printf)
 
@@ -135,6 +138,7 @@ numTiles s = 3*s'*(s'-1) + 1
 data Config u = Config
   { universe :: u,
     statsFile :: FilePath,
+    rawStatsFile :: FilePath,
     sleepBetweenTasks :: Int,
     imageDB :: ImageDB,
     imageWidth :: Int,
@@ -173,6 +177,7 @@ data Config u = Config
 
 data Summary = Summary
   {
+    _rPopSize :: Int,
     _rSchemaQuality :: Double,
     _rSizeDeltaE :: Double,
     _rChildRearingDeltaE :: Double,
@@ -189,14 +194,16 @@ data Summary = Summary
     _rAgreeCount :: Int,
     _rFlirtCount :: Int,
     _rMateCount :: Int,
-    _rIgnoreCount :: Int
+    _rIgnoreCount :: Int,
     -- _rScore :: Double
+    _rDeathCount :: Int
   }
 makeLenses ''Summary
 
-initSummary :: Summary
-initSummary = Summary
+initSummary :: Int -> Summary
+initSummary p = Summary
   {
+    _rPopSize = p,
     _rSchemaQuality = 0,
     _rSizeDeltaE = 0,
     _rChildRearingDeltaE = 0,
@@ -213,13 +220,14 @@ initSummary = Summary
     _rAgreeCount = 0,
     _rFlirtCount = 0,
     _rMateCount = 0,
-    _rIgnoreCount = 0
-    -- _rScore = 0
+    _rIgnoreCount = 0,
+    _rDeathCount = 0
   }
 
 summaryStats :: Summary -> [Stats.Statistic]
 summaryStats r =
   [
+    Stats.uiStat "pop. size" (view rPopSize r),
     Stats.uiStat "SQ" (view rSchemaQuality r),
     Stats.uiStat "size Δe" (view rSizeDeltaE r),
     Stats.uiStat "child rearing Δe" (view rChildRearingDeltaE r),
@@ -236,8 +244,8 @@ summaryStats r =
     Stats.iStat "agreed" (view rAgreeCount r),
     Stats.iStat "flirted" (view rFlirtCount r),
     Stats.iStat "mated" (view rMateCount r),
-    Stats.iStat "ignored" (view rIgnoreCount r)
-    -- Stats.iStat "score" (view rScore r)
+    Stats.iStat "ignored" (view rIgnoreCount r),
+    Stats.iStat "died" (view rDeathCount r)
   ]
 
 data Experiment u = Experiment
@@ -257,12 +265,13 @@ run
 run cfg (me:xs) = do
   when (null xs) $ writeToLog "WARNING: Last wain standing!"
   (x, y) <- chooseObjects xs (imageDB cfg)
+  p <- popSize
   let e = Experiment { _subject = me,
                        _directObject = x,
                        _indirectObject = y,
                        _weanlings = [],
                        _config = cfg,
-                       _summary = initSummary }
+                       _summary = initSummary p}
   e' <- liftIO $ execStateT run' e
   let modifiedAgents = addIfAgent (view directObject e')
         . addIfAgent (view indirectObject e')
@@ -292,11 +301,14 @@ run' = do
   assign (summary.rNetDeltaE) (energy a' - energy a)
   mc <- fmap maxCategories $ use config
   assign (summary.rSchemaQuality) (schemaQuality mc a')
+  when (energy a' < 0) $ assign (summary.rDeathCount) 1
   sf <- fmap statsFile $ use config
   agentStats <- fmap ((Stats.stats a' ++) . summaryStats) $ use summary
   withUniverse . writeToLog $ "At end of turn, " ++ agentId a
     ++ "'s summary: " ++ pretty agentStats
   withUniverse $ updateStats agentStats sf
+  rsf <- fmap rawStatsFile $ use config
+  withUniverse $ writeRawStats (agentId a) rsf agentStats
 
 applySizeCost
   :: (Universe u, Agent u ~ Astronomer)
@@ -667,3 +679,9 @@ letSubjectReflect r = do
   (x', err) <- withUniverse (reflect p1 p2 r x)
   assign subject x'
   assign (summary . rErr) err
+
+writeRawStats :: Universe u => String -> FilePath -> [Stats.Statistic] -> StateT u IO ()
+writeRawStats n f xs = do
+  liftIO $ createDirectoryIfMissing True (dropFileName f)
+  t <- currentTime
+  liftIO . appendFile f $ "time=" ++ show t ++ ",agent=" ++ n ++ ',':raw xs ++ "\n"

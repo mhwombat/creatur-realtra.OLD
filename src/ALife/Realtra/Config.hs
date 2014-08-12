@@ -32,6 +32,7 @@ config = Config
              else 20000000),
 
     statsFile = "/home/amy/alife/gzoo1/stats",
+    rawStatsFile = "/home/amy/alife/gzoo1/rawStats",
 
     -- Number of microseconds to sleep after each agent gets its turn
     -- at the CPU.
