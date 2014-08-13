@@ -514,9 +514,7 @@ applyAgreementEffects label = do
   x <- fmap cooperationAgreementDelta $ use config
   r <- withUniverse $ rarityOf label 
   let deltaE = x*r
-  let reason = if (isImage b)
-                 then "image agreement"
-                 else "agent agreement"
+  let reason = "agreement"
   adjustSubjectEnergy deltaE rAgreementDeltaE reason
   adjustObjectEnergy indirectObject deltaE rOtherAgreementDeltaE reason
   (summary.rAgreeCount) += 1
@@ -568,7 +566,7 @@ applyMatingEffects
 applyMatingEffects = do
   deltaE <- fmap matingDeltaE $ use config
   adjustSubjectEnergy deltaE rMatingDeltaE "mating"
-  adjustObjectEnergy directObject deltaE rOtherAgreementDeltaE "mating"
+  adjustObjectEnergy directObject deltaE rOtherMatingDeltaE "mating"
   (summary.rMateCount) += 1
 
 wean :: u ~ RUniverse Astronomer => StateT (Experiment u) IO ()
