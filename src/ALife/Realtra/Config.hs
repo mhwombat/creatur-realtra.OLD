@@ -13,18 +13,18 @@
 {-# LANGUAGE TypeFamilies #-}
 module ALife.Realtra.Config where
 
-import ALife.Creatur.Universe (CachedUniverse, mkCachedUniverse)
+import ALife.Realtra.Universe (RUniverse, mkRUniverse)
 import ALife.Realtra.ImageDB (mkImageDB)
 import ALife.Realtra.Wain (Astronomer, Config(..))
 
 onServer :: Bool
 onServer = False
 
-config :: Config (CachedUniverse Astronomer)
+config :: Config (RUniverse Astronomer)
 config = Config
   {
     universe
-      = mkCachedUniverse
+      = mkRUniverse
           "GalaxyZoo"             -- experiment name
           "/home/amy/alife/gzoo1" -- directory
           (if onServer            -- cache size (in bytes)
@@ -75,11 +75,11 @@ config = Config
     -- adjust your configuration.
     maxPopulationSize = if onServer then 800 else 20,
 
-    -- The maximum number of categories /actually used/.
-    -- Note: It's unlikely the wains will actually this limit
-    -- (because the metabolism costs will be so high), so set this value
-    -- a bit higher than your desired maximum.
-    maxCategories = 50,
+    -- -- The maximum number of categories /actually used/.
+    -- -- Note: It's unlikely the wains will actually this limit
+    -- -- (because the metabolism costs will be so high), so set this value
+    -- -- a bit higher than your desired maximum.
+    -- maxCategories = 50,
 
     -- To ensure that smaller agents don't have an excessive advantage
     -- over larger agents, part of the metabolic cost is fixed.
@@ -129,17 +129,11 @@ config = Config
     -- This is normally an energy LOSS, so it should be negative.
     cooperationDeltaE = -0.01,
 
-    -- When two agents co-operate, and agree on a classification of an
-    -- *agent*, their energy changes by this amount, multiplied by the
+    -- When two agents co-operate, and agree on a classification,
+    -- their energy changes by this amount, multiplied by the
     -- quality of the overall classification schema.
     -- This is normally an energy GAIN, so it should be positive.
-    cooperationAgentAgreementDelta = 0.1,
-
-    -- When two agents co-operate, and agree on a classification of an
-    -- *image*, their energy changes by this amount, multiplied by the
-    -- quality of the overall classification schema.
-    -- This is normally an energy GAIN, so it should be positive.
-    cooperationImageAgreementDelta = 1.0,
+    cooperationAgreementDelta = 0.1,
 
     -- The range of values allowed for r0 (the learning rate applied to
     -- the BMU at time 0) in the learning function for the

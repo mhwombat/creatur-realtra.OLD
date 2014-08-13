@@ -31,22 +31,22 @@ import Text.Printf (printf)
 
 getAndExamineAll
   :: (Universe u, Agent u ~ Astronomer)
-    => Config u -> StateT u IO ()
-getAndExamineAll config = do
+    => StateT u IO ()
+getAndExamineAll = do
   names <- agentIds
-  mapM_ (getAndExamine config) names
+  mapM_ getAndExamine names
   
 getAndExamine
   :: (Universe u, Agent u ~ Astronomer)
-    => Config u -> String -> StateT u IO ()
-getAndExamine config s = do
+    => String -> StateT u IO ()
+getAndExamine s = do
   a <- getAgent s
   case a of
-    (Right agent) -> liftIO $ examine config agent
+    (Right agent) -> liftIO $ examine agent
     (Left msg)    -> liftIO $ putStrLn msg 
   
-examine :: Config u -> Astronomer -> IO ()
-examine config a = do
+examine :: Astronomer -> IO ()
+examine a = do
   putStrLn $ "name: " ++ show (name a)
   -- appearance
   -- brain
@@ -61,9 +61,6 @@ examine config a = do
     ++ show (childrenWeanedLifetime a)
   putStrLn $ "litter size: " ++ show (length $ litter a)
   putStrLn $ "counts=" ++ show (elems . counterMap . classifier $ brain a)
-  let mc = maxCategories config
-  putStrLn $ "schema quality=" ++  printf "%5.3f" (schemaQuality mc a)
-  putStrLn $ "categories really used=" ++ show (categoriesReallyUsed mc a)
   putStrLn $ "size: " ++ show (wainSize a)
   putStrLn $ "Classifier size: " ++ show (size . classifier . brain $ a)
   putStrLn $ "Number of classifier models: " ++ show (numModels . classifier . brain $ a)
@@ -107,7 +104,7 @@ main = do
   args <- getArgs
   if null args
     then
-      evalStateT (getAndExamineAll Config.config) (universe Config.config)
+      evalStateT getAndExamineAll (universe Config.config)
     else do
       let s = head args
-      evalStateT (getAndExamine Config.config s) (universe Config.config)
+      evalStateT (getAndExamine s) (universe Config.config)
