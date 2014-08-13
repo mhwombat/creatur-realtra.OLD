@@ -510,7 +510,6 @@ applyAgreementEffects
   :: u ~ RUniverse Astronomer
     => Label -> StateT (Experiment u) IO ()
 applyAgreementEffects label = do
-  b <- use directObject
   x <- fmap cooperationAgreementDelta $ use config
   r <- withUniverse $ rarityOf label 
   let deltaE = x*r
