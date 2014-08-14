@@ -201,8 +201,8 @@ initSummary :: Int -> Summary
 initSummary p = Summary
   {
     _rPopSize = p,
-   _rSchemaQuality = 0,
-     _rMetabolismDeltaE = 0,
+    _rSchemaQuality = 0,
+    _rMetabolismDeltaE = 0,
     _rChildRearingDeltaE = 0,
     _rCoopDeltaE = 0,
     _rAgreementDeltaE = 0,
@@ -226,8 +226,8 @@ summaryStats :: Summary -> [Stats.Statistic]
 summaryStats r =
   [
     Stats.uiStat "pop. size" (view rPopSize r),
-    Stats.uiStat "SQ" (view rSchemaQuality r),
-   Stats.uiStat "metabolism Δe" (view rMetabolismDeltaE r),
+    Stats.iStat "SQ" (view rSchemaQuality r),
+    Stats.uiStat "metabolism Δe" (view rMetabolismDeltaE r),
     Stats.uiStat "child rearing Δe" (view rChildRearingDeltaE r),
     Stats.uiStat "cooperation Δe" (view rCoopDeltaE r),
     Stats.uiStat "agreement Δe" (view rAgreementDeltaE r),

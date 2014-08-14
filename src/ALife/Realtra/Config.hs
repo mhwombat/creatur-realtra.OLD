@@ -63,12 +63,12 @@ config = Config
     -- The size of the initial population.
     initialPopulationSize = if onServer then 500 else 10,
 
-    energyPoolSize = if onServer then 16 else 5,
+    energyPoolSize = if onServer then 20 else 5,
 
     -- The daemon will stop if the population falls below this amount.
     -- This gives you a chance to analyse the problem and perhaps
     -- adjust your configuration.
-    minPopulationSize = if onServer then 100 else 2,
+    minPopulationSize = if onServer then 150 else 2,
 
     -- The daemon will stop if the population rises above this amount.
     -- This gives you a chance to analyse the problem and perhaps
@@ -102,7 +102,7 @@ config = Config
     -- You probably won't need to alter this field.
     childCostFactor = 0.2,
 
-    easementTime = 100,
+    easementTime = 500,
     easementCooperationBonus = 0.05,
     easementAgreementBonus = 0.25,
 
