@@ -7,7 +7,7 @@
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Utility functions that don't fit anywhere else.
+-- The daemon that runs the Créatúr experiment.
 --
 ------------------------------------------------------------------------
 {-# LANGUAGE TypeFamilies, FlexibleContexts #-}

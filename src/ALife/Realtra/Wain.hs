@@ -43,6 +43,7 @@ import ALife.Creatur.Wain.Response (Response, randomResponse, action)
 import ALife.Creatur.Wain.Util (unitInterval)
 import qualified ALife.Creatur.Wain.Statistics as Stats
 import ALife.Realtra.Action (Action(..))
+import qualified ALife.Realtra.Classification as SQ
 import ALife.Creatur.Wain.PersistentStatistics (updateStats, readStats,
   clearStats, summarise)
 import ALife.Realtra.Image (Image, stripedImage, randomImage)
@@ -53,7 +54,7 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Random (Rand, RandomGen, getRandomR)
 import Control.Monad.State.Lazy (StateT, execStateT, evalStateT, get)
 import Data.Word (Word8, Word16)
-import Math.Geometry.GridMap (elems, findWithDefault)
+import Math.Geometry.GridMap (elems, toList)
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (dropFileName)
 import System.Random (randomIO, randomRIO)
@@ -338,20 +339,10 @@ childRearingCost b f x a = x * (sum . map g $ litter a)
     where g c = metabolismCost b f c
 
 schemaQuality :: Astronomer -> Int
-schemaQuality = discrimination . elems . counterMap . classifier . brain
-
-discrimination :: Integral a => [a] -> Int
-discrimination xs = length $ filter (>k) xs
-  where k = (sum xs) `div` (fromIntegral $ 2 * length xs)
+schemaQuality = SQ.discrimination . elems . counterMap . classifier . brain
 
 novelty :: Label -> Astronomer -> Double
-novelty l a = 1 - (fromIntegral n)/(fromIntegral total)
-  where m = counterMap . classifier . brain $ a
-        n = findWithDefault 0 l m
-        total = sum . elems $ m
-
-
-
+novelty l a = SQ.novelty l . toList . counterMap . classifier . brain $ a
 
 chooseAction'
   :: (Universe u, Agent u ~ Astronomer)
@@ -508,9 +499,12 @@ applyAgreementEffects label = do
   (AObject b) <- use indirectObject
   x <- fmap cooperationAgreementDelta $ use config
   let reason = "agreement"
-  adjustSubjectEnergy (x * novelty label a) rAgreementDeltaE reason
-  adjustObjectEnergy indirectObject (x * novelty label b)
-    rOtherAgreementDeltaE reason
+  let ra = x * novelty label a
+  withUniverse . writeToLog $ "novelty=" ++ show ra
+  adjustSubjectEnergy ra rAgreementDeltaE reason
+  let rb = x * novelty label b
+  withUniverse . writeToLog $ "novelty=" ++ show rb
+  adjustObjectEnergy indirectObject rb rOtherAgreementDeltaE reason
   (summary.rAgreeCount) += 1
 
 -- | The first generation of wains gets a bonus to buy them some time

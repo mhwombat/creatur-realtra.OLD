@@ -133,7 +133,7 @@ config = Config
     -- their energy changes by this amount, multiplied by the
     -- quality of the overall classification schema.
     -- This is normally an energy GAIN, so it should be positive.
-    cooperationAgreementDelta = 0.1,
+    cooperationAgreementDelta = 1.0,
 
     -- The range of values allowed for r0 (the learning rate applied to
     -- the BMU at time 0) in the learning function for the
