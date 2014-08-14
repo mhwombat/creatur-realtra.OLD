@@ -13,18 +13,18 @@
 {-# LANGUAGE TypeFamilies #-}
 module ALife.Realtra.Config where
 
-import ALife.Realtra.Universe (RUniverse, mkRUniverse)
+import ALife.Creatur.Universe (CachedUniverse, mkCachedUniverse)
 import ALife.Realtra.ImageDB (mkImageDB)
 import ALife.Realtra.Wain (Astronomer, Config(..))
 
 onServer :: Bool
 onServer = False
 
-config :: Config (RUniverse Astronomer)
+config :: Config (CachedUniverse Astronomer)
 config = Config
   {
     universe
-      = mkRUniverse
+      = mkCachedUniverse
           "GalaxyZoo"             -- experiment name
           "/home/amy/alife/gzoo1" -- directory
           (if onServer            -- cache size (in bytes)

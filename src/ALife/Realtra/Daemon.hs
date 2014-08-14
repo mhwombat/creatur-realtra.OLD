@@ -15,7 +15,7 @@ module Main where
 
 import ALife.Creatur (programVersion)
 import ALife.Creatur.Daemon (Daemon(..), launch)
-import ALife.Creatur.Universe (Universe, writeToLog,
+import ALife.Creatur.Universe (Universe, Agent, writeToLog,
   replenishEnergyPool)
 import ALife.Creatur.Task (simpleDaemon, runInteractingAgents)
 import ALife.Creatur.Wain (programVersion)
@@ -23,7 +23,6 @@ import ALife.Realtra.Wain (Astronomer, universe, sleepBetweenTasks, run,
   finishRound, statsFile, minPopulationSize, maxPopulationSize,
   energyPoolSize)
 import qualified ALife.Realtra.Config as Config
-import ALife.Realtra.Universe (RUniverse)
 import Control.Monad.State (StateT, execStateT)
 import Data.Version (showVersion)
 import Paths_creatur_realtra (version)
@@ -37,10 +36,10 @@ shutdownHandler programName u =
   execStateT (writeToLog $ "Shutdown requested for " ++ programName) u
   >> return ()
 
-startRoundProgram :: u ~ RUniverse Astronomer => StateT u IO ()
+startRoundProgram :: (Universe u, Agent u ~ Astronomer) => StateT u IO ()
 startRoundProgram = replenishEnergyPool (energyPoolSize Config.config)
 
-endRoundProgram :: u ~ RUniverse Astronomer => StateT u IO ()
+endRoundProgram :: (Universe u, Agent u ~ Astronomer) => StateT u IO ()
 endRoundProgram = finishRound (statsFile Config.config)
 
 main :: IO ()

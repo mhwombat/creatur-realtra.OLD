@@ -22,11 +22,13 @@ module ALife.Realtra.Wain
     summarise,
     energy,
     passion,
-    categoriesReallyUsed
+    schemaQuality
   ) where
 
 import ALife.Creatur (agentId)
 import ALife.Creatur.Database (size)
+import ALife.Creatur.Universe (Universe, Agent, writeToLog,
+  withdrawEnergy, currentTime, popSize)
 import ALife.Creatur.Util (stateMap)
 import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
   chooseAction, buildWainAndGenerateGenome, classify, teachLabel,
@@ -40,21 +42,18 @@ import ALife.Creatur.Wain.Raw (raw)
 import ALife.Creatur.Wain.Response (Response, randomResponse, action)
 import ALife.Creatur.Wain.Util (unitInterval)
 import qualified ALife.Creatur.Wain.Statistics as Stats
-import ALife.Creatur.Universe (Universe, Agent, writeToLog,
-  withdrawEnergy, currentTime, popSize)
 import ALife.Realtra.Action (Action(..))
 import ALife.Creatur.Wain.PersistentStatistics (updateStats, readStats,
   clearStats, summarise)
 import ALife.Realtra.Image (Image, stripedImage, randomImage)
 import ALife.Realtra.ImageDB (ImageDB, anyImage)
-import ALife.Realtra.Universe (RUniverse, incrementCount, rarityOf)
 import Control.Lens hiding (Action, universe)
 import Control.Monad (replicateM, when)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Random (Rand, RandomGen, getRandomR)
 import Control.Monad.State.Lazy (StateT, execStateT, evalStateT, get)
 import Data.Word (Word8, Word16)
-import Math.Geometry.GridMap (elems)
+import Math.Geometry.GridMap (elems, findWithDefault)
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (dropFileName)
 import System.Random (randomIO, randomRIO)
@@ -176,6 +175,7 @@ data Config u = Config
 data Summary = Summary
   {
     _rPopSize :: Int,
+    _rSchemaQuality :: Int,
     _rMetabolismDeltaE :: Double,
     _rChildRearingDeltaE :: Double,
     _rCoopDeltaE :: Double,
@@ -201,7 +201,8 @@ initSummary :: Int -> Summary
 initSummary p = Summary
   {
     _rPopSize = p,
-    _rMetabolismDeltaE = 0,
+   _rSchemaQuality = 0,
+     _rMetabolismDeltaE = 0,
     _rChildRearingDeltaE = 0,
     _rCoopDeltaE = 0,
     _rAgreementDeltaE = 0,
@@ -225,7 +226,8 @@ summaryStats :: Summary -> [Stats.Statistic]
 summaryStats r =
   [
     Stats.uiStat "pop. size" (view rPopSize r),
-    Stats.uiStat "metabolism Δe" (view rMetabolismDeltaE r),
+    Stats.uiStat "SQ" (view rSchemaQuality r),
+   Stats.uiStat "metabolism Δe" (view rMetabolismDeltaE r),
     Stats.uiStat "child rearing Δe" (view rChildRearingDeltaE r),
     Stats.uiStat "cooperation Δe" (view rCoopDeltaE r),
     Stats.uiStat "agreement Δe" (view rAgreementDeltaE r),
@@ -257,7 +259,7 @@ data Experiment u = Experiment
 makeLenses ''Experiment
 
 run
-  :: u ~ RUniverse Astronomer
+  :: (Universe u, Agent u ~ Astronomer)
     => Config u -> [Astronomer] -> StateT u IO [Astronomer]
 run cfg (me:xs) = do
   when (null xs) $ writeToLog "WARNING: Last wain standing!"
@@ -277,7 +279,7 @@ run cfg (me:xs) = do
   return modifiedAgents
 run _ _ = error "no more wains"
 
-run' :: u ~ RUniverse Astronomer => StateT (Experiment u) IO ()
+run' :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()
 run' = do
   a <- use subject
   withUniverse . writeToLog $ "---------- " ++ agentId a
@@ -296,6 +298,7 @@ run' = do
   a' <- use subject
   withUniverse . writeToLog $ "End of " ++ agentId a ++ "'s turn"
   assign (summary.rNetDeltaE) (energy a' - energy a)
+  assign (summary.rSchemaQuality) (schemaQuality a')
   when (energy a' < 0) $ assign (summary.rDeathCount) 1
   sf <- fmap statsFile $ use config
   agentStats <- fmap ((Stats.stats a' ++) . summaryStats) $ use summary
@@ -306,7 +309,7 @@ run' = do
   withUniverse $ writeRawStats (agentId a) rsf agentStats
 
 applyMetabolismCost
-  :: u ~ RUniverse Astronomer
+  :: (Universe u, Agent u ~ Astronomer)
     => StateT (Experiment u) IO ()
 applyMetabolismCost = do
   a <- use subject
@@ -316,7 +319,7 @@ applyMetabolismCost = do
   adjustSubjectEnergy deltaE rMetabolismDeltaE "metabolism"
 
 applyChildrearingCost
-  :: u ~ RUniverse Astronomer
+  :: (Universe u, Agent u ~ Astronomer)
     => StateT (Experiment u) IO ()
 applyChildrearingCost = do
   a <- use subject
@@ -334,32 +337,24 @@ childRearingCost :: Double -> Double -> Double -> Astronomer -> Double
 childRearingCost b f x a = x * (sum . map g $ litter a)
     where g c = metabolismCost b f c
 
--- schemaQuality :: Int -> Astronomer -> Double
--- schemaQuality m
---   = schemaQuality' m . elems . counterMap . classifier . brain
+schemaQuality :: Astronomer -> Int
+schemaQuality = discrimination . elems . counterMap . classifier . brain
 
--- schemaQuality' :: Integral a => Int -> [a] -> Double
--- schemaQuality' m xs = min 1 (n/xMax)
---   where n = fromIntegral $ categoriesReallyUsed' m xs
---         xMax = fromIntegral m
--- -- schemaQuality' xs = y*y
--- --   where y = 2*(x - 0.5)
--- --         x = (n - xMin)/(xMax - xMin)
--- --         n = min xMax . fromIntegral $ categoriesReallyUsed' xs
--- --         xMin = fromIntegral $ C.minCategories C.config
--- --         xMax = fromIntegral $ C.m C.config
+discrimination :: Integral a => [a] -> Int
+discrimination xs = length $ filter (>k) xs
+  where k = (sum xs) `div` (fromIntegral $ 2 * length xs)
 
-categoriesReallyUsed :: Int -> Astronomer -> Int
-categoriesReallyUsed m
-  = categoriesReallyUsed' m . elems . counterMap
-      . classifier . brain
+novelty :: Label -> Astronomer -> Double
+novelty l a = 1 - (fromIntegral n)/(fromIntegral total)
+  where m = counterMap . classifier . brain $ a
+        n = findWithDefault 0 l m
+        total = sum . elems $ m
 
-categoriesReallyUsed' :: Integral a => Int -> [a] -> Int
-categoriesReallyUsed' m xs = length $ filter (>k) xs
-  where k = (sum xs) `div` (fromIntegral m)
+
+
 
 chooseAction'
-  :: u ~ RUniverse Astronomer
+  :: (Universe u, Agent u ~ Astronomer)
     => StateT (Experiment u) IO (Label, Response Action)
 chooseAction' = do
   a <- use subject
@@ -378,7 +373,7 @@ chooseAction' = do
   return (imgLabel, r)
 
 incSubjectAge
-  :: u ~ RUniverse Astronomer
+  :: (Universe u, Agent u ~ Astronomer)
     => StateT (Experiment u) IO ()
 incSubjectAge = do
   a <- use subject
@@ -391,7 +386,7 @@ describe _ _    Flirt = "flirt"
 describe _ _    Ignore = "do nothing"
 
 chooseObjects
-  :: u ~ RUniverse Astronomer
+  :: (Universe u, Agent u ~ Astronomer)
     => [Astronomer] -> ImageDB -> StateT u IO (Object, Object)
 chooseObjects xs db = do
   -- withUniverse . writeToLog $ "Direct object = " ++ objectId x
@@ -400,7 +395,7 @@ chooseObjects xs db = do
   return (x, y)
 
 runAction
-  :: u ~ RUniverse Astronomer
+  :: (Universe u, Agent u ~ Astronomer)
     => Action -> Label -> StateT (Experiment u) IO ()
 
 --
@@ -451,10 +446,9 @@ runAction Ignore _ = do
 --
 
 agree
-  :: u ~ RUniverse Astronomer
+  :: (Universe u, Agent u ~ Astronomer)
     => Label -> StateT (Experiment u) IO ()
 agree label = do
-  withUniverse $ incrementCount label
   a <- use subject
   dObj <- use directObject
   (AObject b) <- use indirectObject
@@ -471,7 +465,7 @@ agree label = do
 -- TODO: factor out common code in agree, disagree
   
 disagree
-  :: u ~ RUniverse Astronomer
+  :: (Universe u, Agent u ~ Astronomer)
     => Label -> Label -> StateT (Experiment u) IO ()
 disagree aLabel bLabel = do
   a <- use subject
@@ -487,7 +481,7 @@ disagree aLabel bLabel = do
   assign indirectObject (AObject b')
 
 applyCooperationEffects
-  :: u ~ RUniverse Astronomer
+  :: (Universe u, Agent u ~ Astronomer)
     => StateT (Experiment u) IO ()
 applyCooperationEffects = do
   deltaE <- fmap cooperationDeltaE $ use config
@@ -495,7 +489,7 @@ applyCooperationEffects = do
   (summary.rCooperateCount) += 1
 
 applyEarlyCooperationEffects
-  :: u ~ RUniverse Astronomer
+  :: (Universe u, Agent u ~ Astronomer)
     => StateT (Experiment u) IO ()
 applyEarlyCooperationEffects = do
   t0 <- fmap (fromIntegral . easementTime) $ use config
@@ -507,21 +501,22 @@ applyEarlyCooperationEffects = do
     adjustSubjectEnergy bonus rCoopDeltaE reason
 
 applyAgreementEffects
-  :: u ~ RUniverse Astronomer
+  :: (Universe u, Agent u ~ Astronomer)
     => Label -> StateT (Experiment u) IO ()
 applyAgreementEffects label = do
+  a <- use subject
+  (AObject b) <- use indirectObject
   x <- fmap cooperationAgreementDelta $ use config
-  r <- withUniverse $ rarityOf label 
-  let deltaE = x*r
   let reason = "agreement"
-  adjustSubjectEnergy deltaE rAgreementDeltaE reason
-  adjustObjectEnergy indirectObject deltaE rOtherAgreementDeltaE reason
+  adjustSubjectEnergy (x * novelty label a) rAgreementDeltaE reason
+  adjustObjectEnergy indirectObject (x * novelty label b)
+    rOtherAgreementDeltaE reason
   (summary.rAgreeCount) += 1
 
 -- | The first generation of wains gets a bonus to buy them some time
 --   to learn about the universe.
 applyEarlyAgreementEffects
-  :: u ~ RUniverse Astronomer
+  :: (Universe u, Agent u ~ Astronomer)
     => StateT (Experiment u) IO ()
 applyEarlyAgreementEffects = do
   t0 <- fmap (fromIntegral . easementTime) $ use config
@@ -533,7 +528,7 @@ applyEarlyAgreementEffects = do
     adjustSubjectEnergy bonus rAgreementDeltaE reason
     adjustObjectEnergy indirectObject bonus rOtherAgreementDeltaE reason
 
-flirt :: u ~ RUniverse Astronomer => StateT (Experiment u) IO ()
+flirt :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()
 flirt = do
   a <- use subject
   (AObject b) <- use directObject
@@ -552,7 +547,7 @@ recordBirths = do
   (summary.rBirthCount) += length (litter a)
 
 applyFlirtationEffects
-  :: u ~ RUniverse Astronomer
+  :: (Universe u, Agent u ~ Astronomer)
     => StateT (Experiment u) IO ()
 applyFlirtationEffects = do
   deltaE <- fmap flirtingDeltaE $ use config
@@ -560,7 +555,7 @@ applyFlirtationEffects = do
   (summary.rFlirtCount) += 1
 
 applyMatingEffects
-  :: u ~ RUniverse Astronomer
+  :: (Universe u, Agent u ~ Astronomer)
     => StateT (Experiment u) IO ()
 applyMatingEffects = do
   deltaE <- fmap matingDeltaE $ use config
@@ -568,7 +563,7 @@ applyMatingEffects = do
   adjustObjectEnergy directObject deltaE rOtherMatingDeltaE "mating"
   (summary.rMateCount) += 1
 
-wean :: u ~ RUniverse Astronomer => StateT (Experiment u) IO ()
+wean :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()
 wean = do
   (a:as) <- use subject >>= withUniverse . weanMatureChildren
   assign subject a
@@ -584,7 +579,7 @@ withUniverse f = do
   stateMap (\u -> set config (c{universe=u}) e) (universe . view config) f
 
 finishRound
-  :: u ~ RUniverse Astronomer
+  :: (Universe u, Agent u ~ Astronomer)
     => FilePath -> StateT u IO ()
 finishRound f = do
   xs <- readStats f
@@ -592,7 +587,7 @@ finishRound f = do
   clearStats f
 
 adjustSubjectEnergy
-  :: u ~ RUniverse Astronomer
+  :: (Universe u, Agent u ~ Astronomer)
     => Double -> Simple Lens Summary Double -> String
       -> StateT (Experiment u) IO ()
 adjustSubjectEnergy deltaE selector reason = do
@@ -609,7 +604,7 @@ adjustSubjectEnergy deltaE selector reason = do
     ++ " = " ++ printf "%.3f" after
 
 adjustObjectEnergy
-  :: u ~ RUniverse Astronomer
+  :: (Universe u, Agent u ~ Astronomer)
     => Simple Lens (Experiment u) Object -> Double
       -> Simple Lens Summary Double -> String -> StateT (Experiment u) IO ()
 adjustObjectEnergy objectSelector deltaE statSelector reason = do
@@ -629,7 +624,7 @@ adjustObjectEnergy objectSelector deltaE statSelector reason = do
     IObject _ _ -> return ()
 
 adjustedDeltaE
-  :: u ~ RUniverse Astronomer
+  :: (Universe u, Agent u ~ Astronomer)
     => Double -> StateT (Experiment u) IO Double
 adjustedDeltaE deltaE =
   if deltaE <= 0
@@ -648,7 +643,7 @@ adjustSubjectPassion = do
   assign subject (adjustPassion x)
 
 letSubjectReflect
-  :: u ~ RUniverse Astronomer
+  :: (Universe u, Agent u ~ Astronomer)
     => Response Action -> StateT (Experiment u) IO ()
 letSubjectReflect r = do
   x <- use subject
