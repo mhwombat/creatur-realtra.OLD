@@ -123,12 +123,12 @@ randomAstronomer wainName config classifierSize deciderSize = do
   fd <- randomDecayingGaussian fdp
   xs <- replicateM (numTiles . initialPopulationMaxDeciderSize $ config)
          $ randomResponse (numModels c) 
-  let d = buildGeneticSOM deciderSize fd xs
-  let b = buildBrain c d
+  let b = buildBrain c (buildGeneticSOM deciderSize fd xs)
+  d <- getRandomR unitInterval
   m <- getRandomR (0,initialPopulationMaxAgeOfMaturity config)
   p <- getRandomR unitInterval
   let app = stripedImage w h
-  return $ buildWainAndGenerateGenome wainName app b m p
+  return $ buildWainAndGenerateGenome wainName app b d m p
 
 numTiles :: Word8 -> Int
 numTiles s = 3*s'*(s'-1) + 1
@@ -158,7 +158,6 @@ data Config u = Config
     -- minCategories :: Int,
     -- maxCategories :: Int,
     flirtingDeltaE :: Double,
-    matingDeltaE :: Double,
     cooperationDeltaE :: Double,
     cooperationAgreementDelta :: Double,
     classifierR0Range :: (Double,Double),
@@ -185,7 +184,6 @@ data Summary = Summary
     _rMatingDeltaE :: Double,
     _rNetDeltaE :: Double,
     _rOtherAgreementDeltaE :: Double,
-    _rOtherMatingDeltaE :: Double,
     _rErr :: Double,
     _rBirthCount :: Int,
     _rWeanCount :: Int,
@@ -211,7 +209,6 @@ initSummary p = Summary
     _rMatingDeltaE = 0,
     _rNetDeltaE = 0,
     _rOtherAgreementDeltaE = 0,
-    _rOtherMatingDeltaE = 0,
     _rErr = 0,
     _rBirthCount = 0,
     _rWeanCount = 0,
@@ -236,7 +233,6 @@ summaryStats r =
     Stats.uiStat "mating Δe" (view rMatingDeltaE r),
     Stats.uiStat "net Δe" (view rNetDeltaE r),
     Stats.uiStat "other agreement Δe" (view rOtherAgreementDeltaE r),
-    Stats.uiStat "other mating Δe" (view rOtherMatingDeltaE r),
     Stats.uiStat "err" (view rErr r),
     Stats.iStat "bore" (view rBirthCount r),
     Stats.iStat "weaned" (view rWeanCount r),
@@ -552,10 +548,8 @@ applyMatingEffects
   :: (Universe u, Agent u ~ Astronomer)
     => StateT (Experiment u) IO ()
 applyMatingEffects = do
-  deltaE <- fmap matingDeltaE $ use config
-  adjustSubjectEnergy deltaE rMatingDeltaE "mating"
-  adjustObjectEnergy directObject deltaE rOtherMatingDeltaE "mating"
-  adjustChildrenEnergy (-2*deltaE) "transfer from parents"
+  childEnergy <- fmap (sum . map energy . litter) $ use subject
+  (summary . rMatingDeltaE) += childEnergy
   (summary.rMateCount) += 1
 
 updateChildren :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()
@@ -599,30 +593,30 @@ adjustSubjectEnergy deltaE selector reason = do
     ++ ". " ++ printf "%.3f" before ++ " + " ++ printf "%.3f" deltaE'
     ++ " = " ++ printf "%.3f" after
 
-adjustChildrenEnergy
-  :: (Universe u, Agent u ~ Astronomer)
-    => Double -> String -> StateT (Experiment u) IO ()
-adjustChildrenEnergy deltaE reason = do
-  x <- use subject
-  let babes = litter x
-  let childDeltaE = deltaE / fromIntegral (length babes)
-  babes' <- mapM (adjustChildEnergy childDeltaE reason) babes
-  assign subject (x { litter = babes' })
+-- adjustChildrenEnergy
+--   :: (Universe u, Agent u ~ Astronomer)
+--     => Double -> String -> StateT (Experiment u) IO ()
+-- adjustChildrenEnergy deltaE reason = do
+--   x <- use subject
+--   let babes = litter x
+--   let childDeltaE = deltaE / fromIntegral (length babes)
+--   babes' <- mapM (adjustChildEnergy childDeltaE reason) babes
+--   assign subject (x { litter = babes' })
 
-adjustChildEnergy
-  :: (Universe u, Agent u ~ Astronomer)
-    => Double -> String -> Astronomer -> StateT (Experiment u) IO Astronomer
-adjustChildEnergy deltaE reason child = do
-  -- Note: Children receive energy from parents, not from the pool,
-  -- so we don't need to call adjustedDeltaE.
-  withUniverse . writeToLog $ "Adjusting energy of child "
-    ++ agentId child ++ " because of " ++ reason
-    ++ ". " ++ printf "%.3f" before ++ " + " ++ printf "%.3f" deltaE
-    ++ " = " ++ printf "%.3f" after
-  return child'
-  where before = energy child
-        child' = adjustEnergy deltaE child
-        after = energy child'
+-- adjustChildEnergy
+--   :: (Universe u, Agent u ~ Astronomer)
+--     => Double -> String -> Astronomer -> StateT (Experiment u) IO Astronomer
+-- adjustChildEnergy deltaE reason child = do
+--   -- Note: Children receive energy from parents, not from the pool,
+--   -- so we don't need to call adjustedDeltaE.
+--   withUniverse . writeToLog $ "Adjusting energy of child "
+--     ++ agentId child ++ " because of " ++ reason
+--     ++ ". " ++ printf "%.3f" before ++ " + " ++ printf "%.3f" deltaE
+--     ++ " = " ++ printf "%.3f" after
+--   return child'
+--   where before = energy child
+--         child' = adjustEnergy deltaE child
+--         after = energy child'
 
 adjustObjectEnergy
   :: (Universe u, Agent u ~ Astronomer)

@@ -114,13 +114,13 @@ config = Config
 
     -- Note: Passion is reset to zero after mating.
 
-    -- *** Controlling the frequency of mating
+    -- -- *** Controlling the frequency of mating
 
-    -- Every time an agent mates, its energy changes by a fixed amount.
-    -- This is normally an energy LOSS, so it should be negative.
-    matingDeltaE = -0.05,
+    -- -- Every time an agent mates, its energy changes by a fixed amount.
+    -- -- This is normally an energy LOSS, so it should be negative.
+    -- matingDeltaE = -0.05,
 
-    -- Note: Passion is reset to zero after mating.
+    -- -- Note: Passion is reset to zero after mating.
 
     -- *** Controlling the frequency of co-operation
 
