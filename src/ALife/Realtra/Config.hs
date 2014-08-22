@@ -57,6 +57,10 @@ config = Config
     -- required is proportional to the square of this value.
     initialPopulationMaxDeciderSize = 5,
 
+    -- The maximum amount of energy that wains in the initial population
+    -- give to their children at birth.
+    initialPopulationMaxDevotion = 0.4,
+
     -- The maximum age at which wains mature in the initial population.
     initialPopulationMaxAgeOfMaturity = if onServer then 100 else 2,
 

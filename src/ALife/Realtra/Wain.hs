@@ -124,8 +124,8 @@ randomAstronomer wainName config classifierSize deciderSize = do
   xs <- replicateM (numTiles . initialPopulationMaxDeciderSize $ config)
          $ randomResponse (numModels c) 
   let b = buildBrain c (buildGeneticSOM deciderSize fd xs)
-  d <- getRandomR unitInterval
-  m <- getRandomR (0,initialPopulationMaxAgeOfMaturity config)
+  d <- getRandomR (0, initialPopulationMaxDevotion config)
+  m <- getRandomR (0, initialPopulationMaxAgeOfMaturity config)
   p <- getRandomR unitInterval
   let app = stripedImage w h
   return $ buildWainAndGenerateGenome wainName app b d m p
@@ -144,6 +144,7 @@ data Config u = Config
     imageHeight :: Int,
     initialPopulationMaxClassifierSize :: Word8,
     initialPopulationMaxDeciderSize :: Word8,
+    initialPopulationMaxDevotion :: Double,
     initialPopulationMaxAgeOfMaturity :: Word16,
     initialPopulationSize :: Int,
     minPopulationSize :: Int,
