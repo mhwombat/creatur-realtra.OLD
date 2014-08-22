@@ -16,6 +16,7 @@ module ALife.Realtra.Image
     Image(..),
     pixelCount,
     pixelAt,
+    pixelArray,
     stripedImage,
     randomImage,
     readImage,
@@ -38,6 +39,7 @@ import Control.Monad.Random (Rand, RandomGen, getRandoms)
 -- import qualified Data.Array.Repa.IO.DevIL as I
 -- import Data.Array.Repa.Shape (listOfShape)
 import Data.Datamining.Pattern (Pattern(..))
+import Data.List.Split (chunksOf)
 import Data.Serialize (Serialize)
 import Data.Vector.Storable (Vector, toList, fromList)
 import Data.Word (Word8)
@@ -80,6 +82,9 @@ getPixels (Left s) (Left t) = return $ Left (s ++ t)
 
 pixelAt :: Image -> Int -> Int -> Word8
 pixelAt (Image w _ ps) r c = ps !! (r*w + c)
+
+pixelArray :: Image -> [[Word8]]
+pixelArray (Image w _ ps) = chunksOf w ps
 
 -- forceEitherWord8List :: Either [String] [Word8] -> [Word8]
 -- forceEitherWord8List x =
