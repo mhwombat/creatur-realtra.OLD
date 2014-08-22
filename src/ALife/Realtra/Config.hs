@@ -61,7 +61,7 @@ config = Config
     initialPopulationMaxAgeOfMaturity = if onServer then 100 else 2,
 
     -- The size of the initial population.
-    initialPopulationSize = if onServer then 500 else 10,
+    initialPopulationSize = if onServer then 500 else 20,
 
     energyPoolSize = if onServer then 20 else 5,
 

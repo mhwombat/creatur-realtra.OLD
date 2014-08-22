@@ -32,8 +32,8 @@ import ALife.Creatur.Universe (Universe, Agent, writeToLog,
 import ALife.Creatur.Util (stateMap)
 import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
   chooseAction, buildWainAndGenerateGenome, classify, teachLabel,
-  incAge, weanMatureChildren, tryMating, energy, passion, hasLitter,
-  reflect)
+  incAge, weanMatureChildren, removeDeadChildren, tryMating, energy,
+  passion, hasLitter, reflect)
 import ALife.Creatur.Wain.Brain (classifier, buildBrain)
 import ALife.Creatur.Wain.GeneticSOM (RandomDecayingGaussianParams(..),
   randomDecayingGaussian, buildGeneticSOM, numModels, counterMap)
@@ -293,7 +293,7 @@ run' = do
   letSubjectReflect r
   adjustSubjectPassion
   when (hasLitter a) applyChildrearingCost
-  wean
+  updateChildren
   applyMetabolismCost
   incSubjectAge
   a' <- use subject
@@ -555,12 +555,14 @@ applyMatingEffects = do
   deltaE <- fmap matingDeltaE $ use config
   adjustSubjectEnergy deltaE rMatingDeltaE "mating"
   adjustObjectEnergy directObject deltaE rOtherMatingDeltaE "mating"
+  adjustChildrenEnergy (-2*deltaE) "transfer from parents"
   (summary.rMateCount) += 1
 
-wean :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()
-wean = do
+updateChildren :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()
+updateChildren = do
   (a:as) <- use subject >>= withUniverse . weanMatureChildren
-  assign subject a
+  a' <- withUniverse $ removeDeadChildren a
+  assign subject a'
   assign weanlings as
   (summary.rWeanCount) += length as
 
@@ -596,6 +598,31 @@ adjustSubjectEnergy deltaE selector reason = do
     ++ " because of " ++ reason
     ++ ". " ++ printf "%.3f" before ++ " + " ++ printf "%.3f" deltaE'
     ++ " = " ++ printf "%.3f" after
+
+adjustChildrenEnergy
+  :: (Universe u, Agent u ~ Astronomer)
+    => Double -> String -> StateT (Experiment u) IO ()
+adjustChildrenEnergy deltaE reason = do
+  x <- use subject
+  let babes = litter x
+  let childDeltaE = deltaE / fromIntegral (length babes)
+  babes' <- mapM (adjustChildEnergy childDeltaE reason) babes
+  assign subject (x { litter = babes' })
+
+adjustChildEnergy
+  :: (Universe u, Agent u ~ Astronomer)
+    => Double -> String -> Astronomer -> StateT (Experiment u) IO Astronomer
+adjustChildEnergy deltaE reason child = do
+  -- Note: Children receive energy from parents, not from the pool,
+  -- so we don't need to call adjustedDeltaE.
+  withUniverse . writeToLog $ "Adjusting energy of child "
+    ++ agentId child ++ " because of " ++ reason
+    ++ ". " ++ printf "%.3f" before ++ " + " ++ printf "%.3f" deltaE
+    ++ " = " ++ printf "%.3f" after
+  return child'
+  where before = energy child
+        child' = adjustEnergy deltaE child
+        after = energy child'
 
 adjustObjectEnergy
   :: (Universe u, Agent u ~ Astronomer)

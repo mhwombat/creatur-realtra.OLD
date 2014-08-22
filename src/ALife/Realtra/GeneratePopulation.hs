@@ -43,7 +43,7 @@ introduceRandomAgent name = do
   -- Make the first generation a little hungry so they start learning
   -- immediately.
   agent
-    <- fmap (adjustEnergy (-0.1)) . liftIO $
+    <- fmap (adjustEnergy 0.5) . liftIO $
         evalRandIO ( randomAstronomer name Config.config classifierSize
                      deciderSize )
   writeToLog $ "GeneratePopulation: Created " ++ agentId agent

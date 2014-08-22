@@ -15,6 +15,7 @@ module ALife.Realtra.Image
   (
     Image(..),
     pixelCount,
+    pixelAt,
     stripedImage,
     randomImage,
     readImage,
@@ -76,6 +77,9 @@ getPixels (Right w) (Right h) = do
 getPixels (Left s) (Right _) = return $ Left s
 getPixels (Right _) (Left s) = return $ Left s
 getPixels (Left s) (Left t) = return $ Left (s ++ t)
+
+pixelAt :: Image -> Int -> Int -> Word8
+pixelAt (Image w _ ps) r c = ps !! (r*w + c)
 
 -- forceEitherWord8List :: Either [String] [Word8] -> [Word8]
 -- forceEitherWord8List x =
