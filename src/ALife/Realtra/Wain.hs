@@ -179,7 +179,7 @@ data Summary = Summary
     _rAgreementDeltaE :: Double,
     _rFlirtingDeltaE :: Double,
     _rMatingDeltaE :: Double,
-    _rNetDeltaE :: Double,
+    _rOtherMatingDeltaE :: Double,
     _rOtherAgreementDeltaE :: Double,
     _rErr :: Double,
     _rBirthCount :: Int,
@@ -204,7 +204,7 @@ initSummary p = Summary
     _rAgreementDeltaE = 0,
     _rFlirtingDeltaE = 0,
     _rMatingDeltaE = 0,
-    _rNetDeltaE = 0,
+    _rOtherMatingDeltaE = 0,
     _rOtherAgreementDeltaE = 0,
     _rErr = 0,
     _rBirthCount = 0,
@@ -228,7 +228,7 @@ summaryStats r =
     Stats.uiStat "agreement Δe" (view rAgreementDeltaE r),
     Stats.uiStat "flirting Δe" (view rFlirtingDeltaE r),
     Stats.uiStat "mating Δe" (view rMatingDeltaE r),
-    Stats.uiStat "net Δe" (view rNetDeltaE r),
+    Stats.uiStat "other mating Δe" (view rOtherAgreementDeltaE r),
     Stats.uiStat "other agreement Δe" (view rOtherAgreementDeltaE r),
     Stats.uiStat "err" (view rErr r),
     Stats.iStat "bore" (view rBirthCount r),
@@ -291,7 +291,7 @@ run' = do
   incSubjectAge
   a' <- use subject
   withUniverse . writeToLog $ "End of " ++ agentId a ++ "'s turn"
-  assign (summary.rNetDeltaE) (energy a' - energy a)
+  -- assign (summary.rNetDeltaE) (energy a' - energy a)
   assign (summary.rSchemaQuality) (schemaQuality a')
   when (energy a' < 0) $ assign (summary.rDeathCount) 1
   sf <- fmap statsFile $ use config
@@ -525,7 +525,7 @@ flirt = do
       assign subject a'
       assign directObject (AObject b')
       recordBirths
-      applyMatingEffects
+      applyMatingEffects (energy a' - energy a) (energy b' - energy b)
     else return ()
 
 recordBirths :: StateT (Experiment u) IO ()
@@ -543,10 +543,10 @@ applyFlirtationEffects = do
 
 applyMatingEffects
   :: (Universe u, Agent u ~ Astronomer)
-    => StateT (Experiment u) IO ()
-applyMatingEffects = do
-  childEnergy <- fmap (sum . map energy . litter) $ use subject
-  (summary . rMatingDeltaE) += childEnergy
+    => Double -> Double -> StateT (Experiment u) IO ()
+applyMatingEffects e1 e2 = do
+  (summary . rMatingDeltaE) += e1
+  (summary . rOtherMatingDeltaE) += e2
   (summary.rMateCount) += 1
 
 updateChildren :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()
