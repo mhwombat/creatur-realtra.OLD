@@ -228,7 +228,7 @@ summaryStats r =
     Stats.uiStat "agreement Δe" (view rAgreementDeltaE r),
     Stats.uiStat "flirting Δe" (view rFlirtingDeltaE r),
     Stats.uiStat "mating Δe" (view rMatingDeltaE r),
-    Stats.uiStat "other mating Δe" (view rOtherAgreementDeltaE r),
+    Stats.uiStat "other mating Δe" (view rOtherMatingDeltaE r),
     Stats.uiStat "other agreement Δe" (view rOtherAgreementDeltaE r),
     Stats.uiStat "err" (view rErr r),
     Stats.iStat "bore" (view rBirthCount r),
