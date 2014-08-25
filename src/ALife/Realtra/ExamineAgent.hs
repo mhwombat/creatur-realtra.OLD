@@ -50,7 +50,7 @@ examine a = do
   putStrLn $ "name: " ++ show (name a)
   -- appearance
   -- brain
-  putStrLn $ "devotion: " ++ show (devotion a)
+  putStrLn $ "devotion: " ++ printf "%5.3f" (devotion a)
   putStrLn $ "ageOfMaturity: " ++ show (ageOfMaturity a)
   putStrLn $ "passionDelta: " ++ show (passionDelta a)
   putStrLn $ "energy: " ++ printf "%5.3f" (energy a)
