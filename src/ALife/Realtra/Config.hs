@@ -48,47 +48,43 @@ config = Config
     -- setting below controls the maximum length of one side of the
     -- grid, for the /initial/ population. The processing time required
     -- is proportional to the square of this value.
-    initialPopulationMaxClassifierSize = if onServer then 5 else 3,
+    initialPopulationClassifierSizeRange =
+      if onServer then (1, 5) else (1, 3),
 
     -- The decider portion of a wain's brain is also a SOM, using a
     -- hexagonal grid with hexagonal tiles. The setting below controls
     -- the maximum length of one side of the grid,
     -- for the /initial/ population. The processing time
     -- required is proportional to the square of this value.
-    initialPopulationMaxDeciderSize = 5,
+    initialPopulationDeciderSizeRange = (1, 5),
 
     -- The maximum amount of energy that wains in the initial population
     -- give to their children at birth.
-    initialPopulationMaxDevotion = 0.3,
+    initialPopulationDevotionRange = (0, 0.3),
 
     -- The maximum age at which wains mature in the initial population.
-    initialPopulationMaxAgeOfMaturity = if onServer then 100 else 2,
+    initialPopulationMaturityRange =
+      if onServer then (1, 50) else (1, 2),
 
     -- The size of the initial population.
     initialPopulationSize = if onServer then 500 else 20,
 
+    easementTime = 500,
+    easementCooperationBonus = 0.05,
+    easementAgreementBonus = 0.25,
+
     energyPoolSize = if onServer then 30 else 5,
 
-    -- The daemon will stop if the population falls below this amount.
+    -- The daemon will stop if the population falls outside this range.
     -- This gives you a chance to analyse the problem and perhaps
     -- adjust your configuration.
-    minPopulationSize = if onServer then 150 else 2,
-
-    -- The daemon will stop if the population rises above this amount.
-    -- This gives you a chance to analyse the problem and perhaps
-    -- adjust your configuration.
-    maxPopulationSize = if onServer then 800 else 20,
-
-    -- -- The maximum number of categories /actually used/.
-    -- -- Note: It's unlikely the wains will actually this limit
-    -- -- (because the metabolism costs will be so high), so set this value
-    -- -- a bit higher than your desired maximum.
-    -- maxCategories = 50,
+    populationSizeRange = if onServer then (150, 800) else (2,20),
 
     -- To ensure that smaller agents don't have an excessive advantage
     -- over larger agents, part of the metabolic cost is fixed.
     -- Compare with maxSizeBasedMetabolismDeltaE.
     -- This is normally an energy LOSS, so it should be negative.
+    -- You probably won't need to alter this field.
     baseMetabolismDeltaE = -0.05,
 
     -- To ensure that agents use resources efficiently, part of their
@@ -106,10 +102,6 @@ config = Config
     -- You probably won't need to alter this field.
     childCostFactor = 0.2,
 
-    easementTime = 500,
-    easementCooperationBonus = 0.05,
-    easementAgreementBonus = 0.25,
-
     -- *** Controlling the frequency of flirting
 
     -- Every time an agent flirts, its energy changes by a fixed amount.
@@ -117,14 +109,6 @@ config = Config
     flirtingDeltaE = -0.05,
 
     -- Note: Passion is reset to zero after mating.
-
-    -- -- *** Controlling the frequency of mating
-
-    -- -- Every time an agent mates, its energy changes by a fixed amount.
-    -- -- This is normally an energy LOSS, so it should be negative.
-    -- matingDeltaE = -0.05,
-
-    -- -- Note: Passion is reset to zero after mating.
 
     -- *** Controlling the frequency of co-operation
 

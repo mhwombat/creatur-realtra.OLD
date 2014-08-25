@@ -20,8 +20,7 @@ import ALife.Creatur.Universe (Universe, Agent, writeToLog,
 import ALife.Creatur.Task (simpleDaemon, runInteractingAgents)
 import ALife.Creatur.Wain (programVersion)
 import ALife.Realtra.Wain (Astronomer, universe, sleepBetweenTasks, run,
-  finishRound, statsFile, minPopulationSize, maxPopulationSize,
-  energyPoolSize)
+  finishRound, statsFile, populationSizeRange, energyPoolSize)
 import qualified ALife.Realtra.Config as Config
 import Control.Monad.State (StateT, execStateT)
 import Data.Version (showVersion)
@@ -45,8 +44,7 @@ endRoundProgram = finishRound (statsFile Config.config)
 main :: IO ()
 main = launch daemon (universe Config.config)
   where program = run Config.config
-        popRange = ( minPopulationSize Config.config,
-                     maxPopulationSize Config.config )
+        popRange = populationSizeRange Config.config
         daemon = simpleDaemon
                    {task=runInteractingAgents program popRange
                            startRoundProgram endRoundProgram,

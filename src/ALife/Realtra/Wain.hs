@@ -102,7 +102,6 @@ randomAstronomer wainName config classifierSize deciderSize = do
   let w = imageWidth config
   let h = imageWidth config
   imgs <- replicateM n (randomImage w h)
-  -- let fcp = randomDecayingGaussianParams classifierSize
   let fcp = RandomDecayingGaussianParams
                { r0Range = classifierR0Range config,
                  rfRange = classifierRfRange config,
@@ -112,7 +111,6 @@ randomAstronomer wainName config classifierSize deciderSize = do
                  sideLength = classifierSize }
   fc <- randomDecayingGaussian fcp
   let c = buildGeneticSOM classifierSize fc imgs
-  -- let fdp = randomDecayingGaussianParams deciderSize
   let fdp = RandomDecayingGaussianParams
               { r0Range = deciderR0Range config,
                 rfRange = deciderRfRange config,
@@ -121,11 +119,12 @@ randomAstronomer wainName config classifierSize deciderSize = do
                 tfRange = deciderTfRange config,
                 sideLength = deciderSize }
   fd <- randomDecayingGaussian fdp
-  xs <- replicateM (numTiles . initialPopulationMaxDeciderSize $ config)
+  xs <- replicateM
+         (numTiles . snd . initialPopulationDeciderSizeRange $ config)
          $ randomResponse (numModels c) 
   let b = buildBrain c (buildGeneticSOM deciderSize fd xs)
-  d <- getRandomR (0, initialPopulationMaxDevotion config)
-  m <- getRandomR (0, initialPopulationMaxAgeOfMaturity config)
+  d <- getRandomR (initialPopulationDevotionRange config)
+  m <- getRandomR (initialPopulationMaturityRange config)
   p <- getRandomR unitInterval
   let app = stripedImage w h
   return $ buildWainAndGenerateGenome wainName app b d m p
@@ -142,13 +141,12 @@ data Config u = Config
     imageDB :: ImageDB,
     imageWidth :: Int,
     imageHeight :: Int,
-    initialPopulationMaxClassifierSize :: Word8,
-    initialPopulationMaxDeciderSize :: Word8,
-    initialPopulationMaxDevotion :: Double,
-    initialPopulationMaxAgeOfMaturity :: Word16,
+    initialPopulationClassifierSizeRange :: (Word8, Word8),
+    initialPopulationDeciderSizeRange :: (Word8, Word8),
+    initialPopulationDevotionRange :: (Double, Double),
+    initialPopulationMaturityRange :: (Word16, Word16),
     initialPopulationSize :: Int,
-    minPopulationSize :: Int,
-    maxPopulationSize :: Int,
+    populationSizeRange :: (Int, Int),
     energyPoolSize :: Double,
     baseMetabolismDeltaE :: Double,
     energyCostPerByte :: Double,
@@ -156,8 +154,6 @@ data Config u = Config
     easementTime :: Int,
     easementCooperationBonus :: Double,
     easementAgreementBonus :: Double,
-    -- minCategories :: Int,
-    -- maxCategories :: Int,
     flirtingDeltaE :: Double,
     cooperationDeltaE :: Double,
     cooperationAgreementDelta :: Double,
