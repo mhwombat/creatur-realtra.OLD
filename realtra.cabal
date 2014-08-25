@@ -1,5 +1,5 @@
 name:                creatur-realtra
-version:             1.4.4
+version:             1.4.5
 synopsis:            Agent for categorising images.
 description:         Experiment in analysing Galaxy Zoo data.
 homepage:            https://github.com/mhwombat/realtra
@@ -19,7 +19,7 @@ source-repository head
 source-repository this
   type:     git
   location: https://github.com/mhwombat/creatur-realtra.git
-  tag:      1.4.4
+  tag:      1.4.5
 
 executable realtra-daemon
   main-is:          ALife/Realtra/Daemon.hs

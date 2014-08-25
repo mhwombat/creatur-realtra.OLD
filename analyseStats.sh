@@ -14,9 +14,15 @@ truncate()
   echo $x | sed "s/\..*//"
 }
 
-digits3()
+removeScientificNotation()
 {
   x=$1
+  echo $x | sed 's/\([0-9]\)\.\([0-9]*\)e-2/0.0\1\2/; s/\([0-9]\)\.\([0-9]*\)e-3/0.00\1\2/'
+}
+
+digits3()
+{
+  x=`removeScientificNotation $1`
   y=`echo $x*1000 | bc`
   truncate $y
 }
@@ -62,7 +68,7 @@ key="avg. flirted"
 value=`extractValue ${key}`
 if [ `digits3 $value` -lt 3 ]; then echo "WARNING: not flirting often. ${key}=${value}"; fi
 
-key="total size Δe"
+key="total metabolism Δe"
 value=`extractValue ${key}`
 if [ `truncate $value` -lt -18 ]; then echo "WARNING: high total metabolism cost. ${key}=${value}"; fi
 
