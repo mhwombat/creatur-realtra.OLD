@@ -1,5 +1,5 @@
 name:                creatur-realtra
-version:             1.4.6
+version:             1.4.7
 synopsis:            Agent for categorising images.
 description:         Experiment in analysing Galaxy Zoo data.
 homepage:            https://github.com/mhwombat/realtra
@@ -19,7 +19,7 @@ source-repository head
 source-repository this
   type:     git
   location: https://github.com/mhwombat/creatur-realtra.git
-  tag:      1.4.6
+  tag:      1.4.7
 
 executable realtra-daemon
   main-is:          ALife/Realtra/Daemon.hs
@@ -31,7 +31,7 @@ executable realtra-daemon
                     cereal ==0.3.* || ==0.4.*,
                     containers ==0.5.*,
                     creatur ==5.6.2,
-                    creatur-wains ==3.7.1,
+                    creatur-wains ==3.7.3,
                     directory ==1.2.*,
                     factory ==0.2.*,
                     filepath ==1.3.*,
@@ -62,7 +62,7 @@ executable realtra-init
                     cereal ==0.3.* || ==0.4.*,
                     containers ==0.5.*,
                     creatur ==5.6.2,
-                    creatur-wains ==3.7.1,
+                    creatur-wains ==3.7.3,
                     directory ==1.2.*,
                     filepath ==1.3.*,
                     grid ==7.6.*,
@@ -90,7 +90,7 @@ executable realtra-examine
                     cereal ==0.3.* || ==0.4.*,
                     containers ==0.5.*,
                     creatur ==5.6.2,
-                    creatur-wains ==3.7.1,
+                    creatur-wains ==3.7.3,
                     directory ==1.2.*,
                     filepath ==1.3.*,
                     grid ==7.* && >7.1,
@@ -119,7 +119,7 @@ executable realtra-fmri
                     cereal ==0.3.* || ==0.4.*,
                     colour ==2.3.*,
                     creatur ==5.6.2,
-                    creatur-wains ==3.7.1,
+                    creatur-wains ==3.7.3,
                     diagrams-lib ==1.2.*,
                     diagrams-svg ==1.1.*,
                     directory ==1.2.*,
@@ -154,7 +154,7 @@ Test-suite realtra-tests
                     cereal ==0.3.* || ==0.4.*,
                     containers ==0.5.*,
                     creatur ==5.6.2,
-                    creatur-wains ==3.7.1,
+                    creatur-wains ==3.7.3,
                     directory ==1.2.*,
                     filepath ==1.3.*,
                     grid ==7.6.*,
@@ -184,7 +184,7 @@ Test-suite realtra-tests
 --                     cereal ==0.3.* || ==0.4.*,
 --                     cond ==0.4.*,
 --                     creatur ==5.6.2,
---                     creatur-wains ==3.7.1,
+--                     creatur-wains ==3.7.3,
 --                     directory ==1.2.*,
 --                     grid ==7.*,
 --                     JuicyPixels ==3.1.*,
@@ -213,7 +213,7 @@ Test-suite realtra-tests
 --                     cereal ==0.3.* || ==0.4.*,
 --                     cond ==0.4.*,
 --                     creatur ==5.6.2,
---                     creatur-wains ==3.7.1,
+--                     creatur-wains ==3.7.3,
 --                     directory ==1.2.*,
 --                     grid ==7.*,
 --                     MonadRandom ==0.1.*,

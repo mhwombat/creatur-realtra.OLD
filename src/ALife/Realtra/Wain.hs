@@ -32,7 +32,7 @@ import ALife.Creatur.Universe (Universe, Agent, writeToLog,
 import ALife.Creatur.Util (stateMap)
 import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
   chooseAction, buildWainAndGenerateGenome, classify, teachLabel,
-  incAge, weanMatureChildren, removeDeadChildren, tryMating, energy,
+  incAge, weanMatureChildren, tryMating, energy,
   passion, hasLitter, reflect)
 import ALife.Creatur.Wain.Brain (classifier, buildBrain)
 import ALife.Creatur.Wain.GeneticSOM (RandomDecayingGaussianParams(..),
@@ -286,7 +286,7 @@ run' = do
   letSubjectReflect r
   adjustSubjectPassion
   when (hasLitter a) applyChildrearingCost
-  updateChildren
+  weanChildren
   applyMetabolismCost
   incSubjectAge
   a' <- use subject
@@ -549,11 +549,10 @@ applyMatingEffects e1 e2 = do
   (summary . rOtherMatingDeltaE) += e2
   (summary.rMateCount) += 1
 
-updateChildren :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()
-updateChildren = do
+weanChildren :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()
+weanChildren = do
   (a:as) <- use subject >>= withUniverse . weanMatureChildren
-  a' <- withUniverse $ removeDeadChildren a
-  assign subject a'
+  assign subject a
   assign weanlings as
   (summary.rWeanCount) += length as
 
