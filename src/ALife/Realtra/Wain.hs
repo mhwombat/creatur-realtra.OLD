@@ -177,10 +177,13 @@ data Summary = Summary
     _rChildRearingDeltaE :: Double,
     _rCoopDeltaE :: Double,
     _rAgreementDeltaE :: Double,
+    _rEasementCoopDeltaE :: Double,
+    _rEasementAgreementDeltaE :: Double,
     _rFlirtingDeltaE :: Double,
     _rMatingDeltaE :: Double,
     _rOtherMatingDeltaE :: Double,
     _rOtherAgreementDeltaE :: Double,
+    _rOtherEasementAgreementDeltaE :: Double,
     _rErr :: Double,
     _rBirthCount :: Int,
     _rWeanCount :: Int,
@@ -202,10 +205,13 @@ initSummary p = Summary
     _rChildRearingDeltaE = 0,
     _rCoopDeltaE = 0,
     _rAgreementDeltaE = 0,
+    _rEasementCoopDeltaE = 0,
+    _rEasementAgreementDeltaE = 0,
     _rFlirtingDeltaE = 0,
     _rMatingDeltaE = 0,
     _rOtherMatingDeltaE = 0,
     _rOtherAgreementDeltaE = 0,
+    _rOtherEasementAgreementDeltaE = 0,
     _rErr = 0,
     _rBirthCount = 0,
     _rWeanCount = 0,
@@ -226,10 +232,13 @@ summaryStats r =
     Stats.uiStat "child rearing Δe" (view rChildRearingDeltaE r),
     Stats.uiStat "cooperation Δe" (view rCoopDeltaE r),
     Stats.uiStat "agreement Δe" (view rAgreementDeltaE r),
+    Stats.uiStat "easement cooperation Δe" (view rEasementCoopDeltaE r),
+    Stats.uiStat "easement agreement Δe" (view rEasementAgreementDeltaE r),
     Stats.uiStat "flirting Δe" (view rFlirtingDeltaE r),
     Stats.uiStat "mating Δe" (view rMatingDeltaE r),
     Stats.uiStat "other mating Δe" (view rOtherMatingDeltaE r),
     Stats.uiStat "other agreement Δe" (view rOtherAgreementDeltaE r),
+    Stats.uiStat "other easement agreement Δe" (view rOtherEasementAgreementDeltaE r),
     Stats.uiStat "err" (view rErr r),
     Stats.iStat "bore" (view rBirthCount r),
     Stats.iStat "weaned" (view rWeanCount r),
@@ -482,7 +491,7 @@ applyEarlyCooperationEffects = do
     eab <- fmap easementCooperationBonus $ use config
     let bonus = eab*(t0 - t)/t0
     let reason = "early cooperation bonus"
-    adjustSubjectEnergy bonus rCoopDeltaE reason
+    adjustSubjectEnergy bonus rEasementCoopDeltaE reason
 
 applyAgreementEffects
   :: (Universe u, Agent u ~ Astronomer)
@@ -512,8 +521,8 @@ applyEarlyAgreementEffects = do
     eab <- fmap easementAgreementBonus $ use config
     let bonus = eab*(t0 - t)/t0
     let reason = "early agreement bonus"
-    adjustSubjectEnergy bonus rAgreementDeltaE reason
-    adjustObjectEnergy indirectObject bonus rOtherAgreementDeltaE reason
+    adjustSubjectEnergy bonus rEasementAgreementDeltaE reason
+    adjustObjectEnergy indirectObject bonus rOtherEasementAgreementDeltaE reason
 
 flirt :: (Universe u, Agent u ~ Astronomer) => StateT (Experiment u) IO ()
 flirt = do
