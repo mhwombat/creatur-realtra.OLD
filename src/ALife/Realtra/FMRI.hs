@@ -119,10 +119,10 @@ getWain s = do
     (Right agent) -> return agent
     (Left msg)    -> error msg 
   
-examine :: Astronomer -> IO ()
-examine a = do
-  putStrLn $ "name: " ++ show (name a)
-  print (rows . toList . classifier . brain $ a)
+-- examine :: Astronomer -> IO ()
+-- examine a = do
+--   putStrLn $ "name: " ++ show (name a)
+--   print (rows . toList . classifier . brain $ a)
 
 formatVector :: String -> [Double] -> String
 formatVector fmt = intercalate " " . map (printf fmt)
@@ -138,11 +138,12 @@ main :: IO ()
 main = do
   n <- getWainName
   w <- evalStateT (getWain n) (universe Config.config)
-  examine w
+  -- examine w
   let ss = mkSizeSpec (Just 500) Nothing
   -- let ps = take 441 . map round $ ([0,0.5..] :: [Double])
   -- let diagram = drawHexagon ((0,0),Image 21 21 ps ) :: Diagram B R2
   let diagram = drawClassifier . toList . classifier . brain $ w :: Diagram B R2
-  renderSVG "amy.svg" ss diagram
+  let outputFileName = n ++ ".svg"
+  renderSVG outputFileName ss diagram
   -- mainWith (circle 1 :: Diagram B R2)
   -- defaultMain (circle 1 :: Diagram B R2)
