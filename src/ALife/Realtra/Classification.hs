@@ -23,6 +23,5 @@ discrimination xs = length $ filter (>k) xs
   where k = (sum xs) `div` (fromIntegral $ 2 * length xs)
 
 novelty :: (Eq a, Integral b) => a -> [(a, b)] -> Double
-novelty l m = 1 - (fromIntegral n)/(fromIntegral total)
+novelty l m = 1/(fromIntegral n)
   where n = fromMaybe 0 $ lookup l m
-        total = max 1 (sum . map snd $ m)

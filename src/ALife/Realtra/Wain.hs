@@ -156,7 +156,8 @@ data Config u = Config
     easementAgreementBonus :: Double,
     flirtingDeltaE :: Double,
     cooperationDeltaE :: Double,
-    cooperationAgreementDelta :: Double,
+    noveltyBasedCooperationAgreementDeltaE :: Double,
+    minCooperationAgreementDeltaE :: Double,
     classifierR0Range :: (Double,Double),
     classifierRfRange :: (Double,Double),
     classifierW0Range :: (Double,Double),
@@ -360,7 +361,9 @@ chooseAction' = do
     <- withUniverse $
         chooseAction (objectAppearance dObj) (objectAppearance iObj) a
   withUniverse . writeToLog $ agentId a ++ " labels " ++ objectId dObj
-    ++ " as " ++ show imgLabel ++ ", and chooses to "
+    ++ " as " ++ show imgLabel
+    ++ ", novelty=" ++ show (novelty imgLabel a)
+    ++ ", and chooses to "
     ++ describe (objectId dObj) (objectId iObj) (action r)
   assign subject a'
   return (imgLabel, r)
@@ -498,14 +501,18 @@ applyAgreementEffects
     => Label -> StateT (Experiment u) IO ()
 applyAgreementEffects label = do
   a <- use subject
+  dObj <- use directObject
   (AObject b) <- use indirectObject
-  x <- fmap cooperationAgreementDelta $ use config
+  x <- fmap noveltyBasedCooperationAgreementDeltaE $ use config
+  x0 <- fmap minCooperationAgreementDeltaE $ use config
   let reason = "agreement"
-  let ra = x * novelty label a
-  withUniverse . writeToLog $ "novelty=" ++ show ra
+  let ra = x0 + x * novelty label a
+  withUniverse . writeToLog $ "Novelty of " ++ objectId dObj
+    ++ " to " ++ agentId a ++ " is " ++ show ra
   adjustSubjectEnergy ra rAgreementDeltaE reason
-  let rb = x * novelty label b
-  withUniverse . writeToLog $ "novelty=" ++ show rb
+  let rb = x0 + x * novelty label b
+  withUniverse . writeToLog $ "Novelty of " ++ objectId dObj
+    ++ " to " ++ agentId b ++ " is " ++ show rb
   adjustObjectEnergy indirectObject rb rOtherAgreementDeltaE reason
   (summary.rAgreeCount) += 1
 

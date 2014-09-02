@@ -67,9 +67,9 @@ config = Config
       if onServer then (1, 50) else (1, 2),
 
     -- The size of the initial population.
-    initialPopulationSize = if onServer then 500 else 20,
+    initialPopulationSize = if onServer then 200 else 20,
 
-    easementTime = 500,
+    easementTime = 100,
     easementCooperationBonus = 0.05,
     easementAgreementBonus = 0.25,
 
@@ -78,7 +78,7 @@ config = Config
     -- The daemon will stop if the population falls outside this range.
     -- This gives you a chance to analyse the problem and perhaps
     -- adjust your configuration.
-    populationSizeRange = if onServer then (150, 800) else (2,20),
+    populationSizeRange = if onServer then (180, 300) else (2,20),
 
     -- To ensure that smaller agents don't have an excessive advantage
     -- over larger agents, part of the metabolic cost is fixed.
@@ -119,9 +119,16 @@ config = Config
 
     -- When two agents co-operate, and agree on a classification,
     -- their energy changes by this amount, multiplied by the
-    -- quality of the overall classification schema.
+    -- novelty of the image.
+    -- This is in addition to minimum agreement energy change.
     -- This is normally an energy GAIN, so it should be positive.
-    cooperationAgreementDelta = 1.0,
+    noveltyBasedCooperationAgreementDeltaE = 0.9,
+
+    -- When two agents co-operate, and agree on a classification,
+    -- their energy changes by this amount.
+    -- This is in addition to the energy change based on novelty.
+    -- This is normally an energy GAIN, so it should be positive.
+    minCooperationAgreementDeltaE = 0.1,
 
     -- The range of values allowed for r0 (the learning rate applied to
     -- the BMU at time 0) in the learning function for the
