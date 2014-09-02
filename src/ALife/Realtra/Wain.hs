@@ -362,7 +362,7 @@ chooseAction' = do
         chooseAction (objectAppearance dObj) (objectAppearance iObj) a
   withUniverse . writeToLog $ agentId a ++ " labels " ++ objectId dObj
     ++ " as " ++ show imgLabel
-    ++ ", novelty=" ++ show (novelty imgLabel a)
+    ++ ", novelty=" ++ show (novelty imgLabel a')
     ++ ", and chooses to "
     ++ describe (objectId dObj) (objectId iObj) (action r)
   assign subject a'
