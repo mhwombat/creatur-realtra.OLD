@@ -595,7 +595,7 @@ adjustSubjectEnergy
 adjustSubjectEnergy deltaE selector reason = do
   x <- use subject
   let before = energy x
-  deltaE' <- adjustedDeltaE deltaE
+  deltaE' <- adjustedDeltaE deltaE (1 - before)
   -- assign (summary . selector) deltaE'
   (summary . selector) += deltaE'
   assign subject (adjustEnergy deltaE' x)
@@ -639,7 +639,7 @@ adjustObjectEnergy objectSelector deltaE statSelector reason = do
   case x of
     AObject a -> do
       let before = energy a
-      deltaE' <- adjustedDeltaE deltaE
+      deltaE' <- adjustedDeltaE deltaE (1 - before)
       (summary . statSelector) += deltaE'
       let a' = adjustEnergy deltaE' a
       let after = energy a'
@@ -652,12 +652,12 @@ adjustObjectEnergy objectSelector deltaE statSelector reason = do
 
 adjustedDeltaE
   :: (Universe u, Agent u ~ Astronomer)
-    => Double -> StateT (Experiment u) IO Double
-adjustedDeltaE deltaE =
+    => Double -> Double -> StateT (Experiment u) IO Double
+adjustedDeltaE deltaE headroom =
   if deltaE <= 0
     then return deltaE
     else do
-      deltaE' <- withUniverse (withdrawEnergy deltaE)
+      deltaE' <- withUniverse (withdrawEnergy $ min deltaE headroom)
       when (deltaE' < deltaE) $ do
         withUniverse . writeToLog $ "Energy pool exhausted, only "
           ++ show deltaE' ++ " available"
