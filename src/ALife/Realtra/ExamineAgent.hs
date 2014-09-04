@@ -63,6 +63,7 @@ examine a = do
   putStrLn $ "litter size: " ++ show (length $ litter a)
   putStrLn $ "counts=" ++ show (elems . counterMap . classifier $ brain a)
   putStrLn $ "size: " ++ show (wainSize a)
+  putStrLn $ "SQ: " ++ show (schemaQuality a)
   putStrLn $ "Classifier size: " ++ show (size . classifier . brain $ a)
   putStrLn $ "Number of classifier models: " ++ show (numModels . classifier . brain $ a)
   putStrLn $ "Classifier learning function " ++ show (learningFunction . classifier . brain $ a)
