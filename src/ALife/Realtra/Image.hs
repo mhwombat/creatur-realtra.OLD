@@ -14,6 +14,7 @@
 module ALife.Realtra.Image
   (
     Image(..),
+    mkImage,
     pixelCount,
     pixelAt,
     pixelArray,

@@ -25,23 +25,23 @@ config = Config
   {
     universe
       = mkCachedUniverse
-          "GalaxyZoo"             -- experiment name
-          "/home/amy/alife/gzoo1" -- directory
-          (if onServer            -- cache size (in bytes)
+          "Mnist"                  -- experiment name
+          "/home/amy/alife/mnist1" -- directory
+          (if onServer             -- cache size (in bytes)
              then 10000000000
              else 20000000),
 
-    statsFile = "/home/amy/alife/gzoo1/stats",
-    rawStatsFile = "/home/amy/alife/gzoo1/rawStats",
+    statsFile = "/home/amy/alife/mnist1/stats",
+    rawStatsFile = "/home/amy/alife/mnist1/rawStats",
 
     -- Number of microseconds to sleep after each agent gets its turn
     -- at the CPU.
     sleepBetweenTasks = 0,
 
-    imageDB = mkImageDB "/home/amy/GalaxyZoo/table2/tiny-images",
+    imageDB = mkImageDB "/home/amy/mnist/testDataWithAnomalies",
 
-    imageHeight = 21,
-    imageWidth = 21,
+    imageHeight = 28,
+    imageWidth = 28,
 
     -- The classifier portion of a wain's brain is a Self-Organising Map
     -- (SOM). This SOM uses a hexagonal grid with hexagonal tiles. The
@@ -49,14 +49,14 @@ config = Config
     -- grid, for the /initial/ population. The processing time required
     -- is proportional to the square of this value.
     initialPopulationClassifierSizeRange =
-      if onServer then (1, 5) else (1, 3),
+      if onServer then (2, 5) else (1, 3),
 
     -- The decider portion of a wain's brain is also a SOM, using a
     -- hexagonal grid with hexagonal tiles. The setting below controls
     -- the maximum length of one side of the grid,
     -- for the /initial/ population. The processing time
     -- required is proportional to the square of this value.
-    initialPopulationDeciderSizeRange = (1, 5),
+    initialPopulationDeciderSizeRange = (2, 5),
 
     -- The maximum amount of energy that wains in the initial population
     -- give to their children at birth.
@@ -69,30 +69,30 @@ config = Config
     -- The size of the initial population.
     initialPopulationSize = if onServer then 200 else 20,
 
-    easementTime = 100,
-    easementCooperationBonus = 0.05,
-    easementAgreementBonus = 0.25,
+    easementTime = 250,
+    easementCooperationBonus = 0.9,
+    easementAgreementBonus = 0.1,
 
     energyPoolSize = if onServer then 30 else 5,
 
     -- The daemon will stop if the population falls outside this range.
     -- This gives you a chance to analyse the problem and perhaps
     -- adjust your configuration.
-    populationSizeRange = if onServer then (180, 300) else (2,20),
+    populationSizeRange = if onServer then (100, 300) else (4,20),
 
     -- To ensure that smaller agents don't have an excessive advantage
     -- over larger agents, part of the metabolic cost is fixed.
     -- Compare with maxSizeBasedMetabolismDeltaE.
     -- This is normally an energy LOSS, so it should be negative.
     -- You probably won't need to alter this field.
-    baseMetabolismDeltaE = -0.05,
+    baseMetabolismDeltaE = -0.005,
 
     -- To ensure that agents use resources efficiently, part of their
     -- metabolic cost is based on their size.
     -- If you don't know what value to use, multiply the average size
     -- of your initial population by -0.001 and use that.
     -- This is normally an energy LOSS, so it should be negative.
-    energyCostPerByte = -0.0000005,
+    energyCostPerByte = -0.00000001,
 
     -- A wain rearing a child pays a fraction of the metabolic cost
     -- that the child would pay if it were full-grown. It's only a

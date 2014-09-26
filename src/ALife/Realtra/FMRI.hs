@@ -16,7 +16,6 @@ module Main where
 import ALife.Creatur.Universe
 import ALife.Creatur.Wain
 import ALife.Creatur.Wain.Brain
--- import ALife.Creatur.Wain.Classifier
 import ALife.Creatur.Wain.GeneticSOM
 import qualified ALife.Realtra.Config as Config
 import ALife.Realtra.Wain
@@ -25,13 +24,10 @@ import Control.Monad.State
 import Data.Colour.SRGB
 import Data.Function
 import Data.List
--- import Data.List.Split
 import Data.Word
-import Diagrams.Backend.SVG
--- import Diagrams.Backend.SVG.CmdLine
+import Diagrams.Backend.Cairo
 import Diagrams.Prelude
 import Diagrams.TwoD.Text
--- import Numeric
 import System.Environment
 import Text.Printf (printf)
 
@@ -67,12 +63,8 @@ image2diagram = vcat . map imageRow . pixelArray
 cream :: (Ord b, Floating b) => Colour b
 cream = sRGB24 255 255 224
 
--- drawHexagon
---   :: (Renderable Text b, Renderable (Path R2) b, Backend b R2)
---     => ((Int, Int), Image) -> Diagram b R2
 drawHexagon
-  :: (Renderable (DImage Embedded) b, Renderable Text b,
-    Renderable (Path R2) b, Backend b R2)
+  :: (Renderable Text b, Renderable (Path R2) b)
     => ((Int, Int), Image) -> Diagram b R2
 drawHexagon (index, img) = label `atop` pic `atop` hex
   where hex = hexagon 2 # lw (Local 0.05) # fc cream # rotateBy (1/4)
@@ -80,14 +72,12 @@ drawHexagon (index, img) = label `atop` pic `atop` hex
         pic = translateY 1 . translateX (-1) $ image2diagram img
 
 drawHexRow
-  :: (Backend b R2, Renderable (DImage Embedded) b,
-    Renderable (Path R2) b, Renderable Text b)
+  :: (Renderable Text b, Renderable (Path R2) b)
      => [((Int, Int), Image)] -> Diagram b R2
 drawHexRow = hcat . map drawHexagon
 
 drawClassifier
-  :: (Backend b R2, Renderable (DImage Embedded) b,
-    Renderable (Path R2) b, Renderable Text b)
+  :: (Renderable Text b, Renderable (Path R2) b)
      => [((Int, Int), Image)] -> Diagram b R2
 drawClassifier = mconcat . zipWith translateY [0,-3..] . map (centerX . drawHexRow) . rows
   -- where rs = rows xs
@@ -138,12 +128,7 @@ main :: IO ()
 main = do
   n <- getWainName
   w <- evalStateT (getWain n) (universe Config.config)
-  -- examine w
   let ss = mkSizeSpec (Just 500) Nothing
-  -- let ps = take 441 . map round $ ([0,0.5..] :: [Double])
-  -- let diagram = drawHexagon ((0,0),Image 21 21 ps ) :: Diagram B R2
   let diagram = drawClassifier . toList . classifier . brain $ w :: Diagram B R2
   let outputFileName = n ++ ".svg"
-  renderSVG outputFileName ss diagram
-  -- mainWith (circle 1 :: Diagram B R2)
-  -- defaultMain (circle 1 :: Diagram B R2)
+  renderCairo outputFileName ss diagram

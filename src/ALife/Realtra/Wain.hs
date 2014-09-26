@@ -35,6 +35,7 @@ import ALife.Creatur.Wain (Wain(..), Label, adjustEnergy, adjustPassion,
   incAge, weanMatureChildren, tryMating, energy,
   passion, hasLitter, reflect)
 import ALife.Creatur.Wain.Brain (classifier, buildBrain)
+import qualified ALife.Creatur.Wain.ClassificationMetrics as SQ
 import ALife.Creatur.Wain.GeneticSOM (RandomDecayingGaussianParams(..),
   randomDecayingGaussian, buildGeneticSOM, numModels, counterMap)
 import ALife.Creatur.Wain.Pretty (pretty)
@@ -43,7 +44,6 @@ import ALife.Creatur.Wain.Response (Response, randomResponse, action)
 import ALife.Creatur.Wain.Util (unitInterval)
 import qualified ALife.Creatur.Wain.Statistics as Stats
 import ALife.Realtra.Action (Action(..))
-import qualified ALife.Realtra.Classification as SQ
 import ALife.Creatur.Wain.PersistentStatistics (updateStats, readStats,
   clearStats, summarise)
 import ALife.Realtra.Image (Image, stripedImage, randomImage)
@@ -54,7 +54,7 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Random (Rand, RandomGen, getRandomR)
 import Control.Monad.State.Lazy (StateT, execStateT, evalStateT, get)
 import Data.Word (Word8, Word16)
-import Math.Geometry.GridMap (elems, toList)
+import Math.Geometry.GridMap (elems)
 import System.Directory (createDirectoryIfMissing)
 import System.FilePath (dropFileName)
 import System.Random (randomIO, randomRIO)
@@ -173,6 +173,12 @@ data Config u = Config
 data Summary = Summary
   {
     _rPopSize :: Int,
+    _rDirectObjectNovelty :: Double,
+    _rDirectObjectAdjustedNovelty :: Int,
+    _rIndirectObjectNovelty :: Double,
+    _rIndirectObjectAdjustedNovelty :: Int,
+    _rOtherNovelty :: Double,
+    _rOtherAdjustedNovelty :: Int,
     _rSchemaQuality :: Int,
     _rMetabolismDeltaE :: Double,
     _rChildRearingDeltaE :: Double,
@@ -201,6 +207,12 @@ initSummary :: Int -> Summary
 initSummary p = Summary
   {
     _rPopSize = p,
+    _rDirectObjectNovelty = 0,
+    _rDirectObjectAdjustedNovelty = 0,
+    _rIndirectObjectNovelty = 0,
+    _rIndirectObjectAdjustedNovelty = 0,
+    _rOtherNovelty = 0,
+    _rOtherAdjustedNovelty = 0,
     _rSchemaQuality = 0,
     _rMetabolismDeltaE = 0,
     _rChildRearingDeltaE = 0,
@@ -228,6 +240,12 @@ summaryStats :: Summary -> [Stats.Statistic]
 summaryStats r =
   [
     Stats.uiStat "pop. size" (view rPopSize r),
+    Stats.uiStat "DO novelty" (view rDirectObjectNovelty r),
+    Stats.iStat "DO novelty (adj.)" (view rDirectObjectAdjustedNovelty r),
+    Stats.uiStat "IO novelty" (view rIndirectObjectNovelty r),
+    Stats.iStat "IO novelty (adj.)" (view rIndirectObjectAdjustedNovelty r),
+    Stats.uiStat "novelty to other" (view rOtherNovelty r),
+    Stats.iStat "novelty to other (adj.)" (view rOtherAdjustedNovelty r),
     Stats.iStat "SQ" (view rSchemaQuality r),
     Stats.uiStat "metabolism Δe" (view rMetabolismDeltaE r),
     Stats.uiStat "child rearing Δe" (view rChildRearingDeltaE r),
@@ -291,8 +309,8 @@ run' = do
   withUniverse . writeToLog $ "At beginning of turn, " ++ agentId a
     ++ "'s summary: " ++ pretty (Stats.stats a)
   -- forage
-  (imgLabel, r) <- chooseAction'
-  runAction (action r) imgLabel
+  (imgLabel, nov, r) <- chooseAction'
+  runAction (action r) imgLabel nov
   letSubjectReflect r
   adjustSubjectPassion
   when (hasLitter a) applyChildrearingCost
@@ -344,29 +362,30 @@ childRearingCost b f x a = x * (sum . map g $ litter a)
 schemaQuality :: Astronomer -> Int
 schemaQuality = SQ.discrimination . elems . counterMap . classifier . brain
 
-novelty :: Label -> Astronomer -> Double
-novelty l a = SQ.novelty l . toList . counterMap . classifier . brain $ a
-
 chooseAction'
   :: (Universe u, Agent u ~ Astronomer)
-    => StateT (Experiment u) IO (Label, Response Action)
+    => StateT (Experiment u) IO (Label, Double, Response Action)
 chooseAction' = do
   a <- use subject
   dObj <- use directObject
   iObj <- use indirectObject
   withUniverse . writeToLog $ agentId a ++ " sees " ++ objectId dObj
     ++ " and " ++ objectId iObj
-  let (imgLabel, _) = classify (objectAppearance dObj) a
-  (r, a')
+  (dObjLabel, dObjNovelty, dObjNoveltyAdj,
+    iObjLabel, iObjNovelty, iObjNoveltyAdj, r, a')
     <- withUniverse $
         chooseAction (objectAppearance dObj) (objectAppearance iObj) a
-  withUniverse . writeToLog $ agentId a ++ " labels " ++ objectId dObj
-    ++ " as " ++ show imgLabel
-    ++ ", novelty=" ++ show (novelty imgLabel a')
+  assign (summary.rDirectObjectNovelty) dObjNovelty
+  assign (summary.rDirectObjectAdjustedNovelty) dObjNoveltyAdj
+  assign (summary.rIndirectObjectNovelty) iObjNovelty
+  assign (summary.rIndirectObjectAdjustedNovelty) iObjNoveltyAdj
+  withUniverse . writeToLog $ agentId a ++ " labels "
+    ++ objectId dObj ++ " as " ++ show dObjLabel
+    ++ ", " ++ objectId iObj ++ " as " ++ show iObjLabel
     ++ ", and chooses to "
     ++ describe (objectId dObj) (objectId iObj) (action r)
   assign subject a'
-  return (imgLabel, r)
+  return (dObjLabel, dObjNovelty, r)
 
 incSubjectAge
   :: (Universe u, Agent u ~ Astronomer)
@@ -392,12 +411,12 @@ chooseObjects xs db = do
 
 runAction
   :: (Universe u, Agent u ~ Astronomer)
-    => Action -> Label -> StateT (Experiment u) IO ()
+    => Action -> Label -> Double -> StateT (Experiment u) IO ()
 
 --
 -- Co-operate
 --
-runAction Cooperate aLabel = do
+runAction Cooperate aLabel noveltyToMe = do
   applyCooperationEffects
   applyEarlyCooperationEffects
   a <- use subject
@@ -408,17 +427,20 @@ runAction Cooperate aLabel = do
       withUniverse . writeToLog $ agentId a ++ " tells " ++ agentId b
         ++ " that image " ++ objectId dObj ++ " has label "
         ++ show aLabel
-      let (bLabel, b') = classify (objectAppearance dObj) b
+      let (bLabel, noveltyToOther, adjustedNoveltyToOther, b')
+            = classify (objectAppearance dObj) b
+      assign (summary.rOtherNovelty) noveltyToOther
+      assign (summary.rOtherAdjustedNovelty) adjustedNoveltyToOther
       assign indirectObject (AObject b')
       if aLabel == bLabel
-        then agree aLabel
+        then agree aLabel noveltyToMe noveltyToOther
         else disagree aLabel bLabel
     IObject _ _ -> return ()
   
 --
 -- Flirt
 --
-runAction Flirt _ = do
+runAction Flirt _ _ = do
   applyFlirtationEffects
   a <- use subject
   dObj <- use directObject
@@ -431,7 +453,7 @@ runAction Flirt _ = do
 --
 -- Ignore
 --
-runAction Ignore _ = do
+runAction Ignore _ _ = do
   a <- use subject
   dObj <- use directObject
   withUniverse . writeToLog $ agentId a ++ " ignores " ++ objectId dObj
@@ -443,8 +465,8 @@ runAction Ignore _ = do
 
 agree
   :: (Universe u, Agent u ~ Astronomer)
-    => Label -> StateT (Experiment u) IO ()
-agree label = do
+    => Label -> Double -> Double -> StateT (Experiment u) IO ()
+agree label noveltyToMe noveltyToOther = do
   a <- use subject
   dObj <- use directObject
   (AObject b) <- use indirectObject
@@ -455,7 +477,7 @@ agree label = do
   b' <- withUniverse $ teachLabel dObjApp label b -- reinforce
   assign subject a'
   assign indirectObject (AObject b')
-  applyAgreementEffects label
+  applyAgreementEffects noveltyToMe noveltyToOther
   applyEarlyAgreementEffects
 
 -- TODO: factor out common code in agree, disagree
@@ -498,21 +520,14 @@ applyEarlyCooperationEffects = do
 
 applyAgreementEffects
   :: (Universe u, Agent u ~ Astronomer)
-    => Label -> StateT (Experiment u) IO ()
-applyAgreementEffects label = do
-  a <- use subject
-  dObj <- use directObject
-  (AObject b) <- use indirectObject
+    => Double -> Double -> StateT (Experiment u) IO ()
+applyAgreementEffects noveltyToMe noveltyToOther = do
   x <- fmap noveltyBasedCooperationAgreementDeltaE $ use config
   x0 <- fmap minCooperationAgreementDeltaE $ use config
   let reason = "agreement"
-  let ra = x0 + x * novelty label a
-  withUniverse . writeToLog $ "Novelty of " ++ objectId dObj
-    ++ " to " ++ agentId a ++ " is " ++ show ra
+  let ra = x0 + x * noveltyToMe
   adjustSubjectEnergy ra rAgreementDeltaE reason
-  let rb = x0 + x * novelty label b
-  withUniverse . writeToLog $ "Novelty of " ++ objectId dObj
-    ++ " to " ++ agentId b ++ " is " ++ show rb
+  let rb = x0 + x * noveltyToOther
   adjustObjectEnergy indirectObject rb rOtherAgreementDeltaE reason
   (summary.rAgreeCount) += 1
 
