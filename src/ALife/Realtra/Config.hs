@@ -49,7 +49,7 @@ config = Config
     -- grid, for the /initial/ population. The processing time required
     -- is proportional to the square of this value.
     initialPopulationClassifierSizeRange =
-      if onServer then (2, 5) else (1, 3),
+      if onServer then (2, 5) else (2, 3),
 
     -- The decider portion of a wain's brain is also a SOM, using a
     -- hexagonal grid with hexagonal tiles. The setting below controls
@@ -70,10 +70,10 @@ config = Config
     initialPopulationSize = if onServer then 200 else 20,
 
     easementTime = 250,
-    easementCooperationBonus = 0.9,
-    easementAgreementBonus = 0.1,
+    easementCooperationBonus = 0.1,
+    easementAgreementBonus = 0.9,
 
-    energyPoolSize = if onServer then 30 else 5,
+    energyPoolSize = 1000,
 
     -- The daemon will stop if the population falls outside this range.
     -- This gives you a chance to analyse the problem and perhaps
