@@ -379,9 +379,9 @@ chooseAction' = do
   assign (summary.rDirectObjectAdjustedNovelty) dObjNoveltyAdj
   assign (summary.rIndirectObjectNovelty) iObjNovelty
   assign (summary.rIndirectObjectAdjustedNovelty) iObjNoveltyAdj
-  withUniverse . writeToLog $ "To agentId a, " ++ objectId dObj
+  withUniverse . writeToLog $ "To " ++ agentId a ++ ", " ++ objectId dObj
     ++ " has adjusted novelty " ++ show dObjNoveltyAdj
-  withUniverse . writeToLog $ "To agentId a, " ++ objectId iObj
+  withUniverse . writeToLog $ "To " ++ agentId a ++ ", " ++ objectId dObj
     ++ " has adjusted novelty " ++ show iObjNoveltyAdj
   withUniverse . writeToLog $ agentId a ++ " labels "
     ++ objectId dObj ++ " as " ++ show dObjLabel
