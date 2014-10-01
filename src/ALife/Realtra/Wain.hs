@@ -497,10 +497,13 @@ disagree aLabel bLabel = do
   withUniverse . writeToLog $ agentId b ++ " disagrees with "
     ++ agentId a ++ ", says that " ++ objectId dObj ++ " has label "
     ++ show bLabel
-  a' <- withUniverse $ teachLabel dObjApp bLabel a
-  b' <- withUniverse $ teachLabel dObjApp aLabel b
-  assign subject a'
-  assign indirectObject (AObject b')
+  if age a > age b
+    then do
+      b' <- withUniverse $ teachLabel dObjApp aLabel b
+      assign indirectObject (AObject b')
+    else do
+      a' <- withUniverse $ teachLabel dObjApp bLabel a
+      assign subject a'
 
 applyCooperationEffects
   :: (Universe u, Agent u ~ Astronomer)
